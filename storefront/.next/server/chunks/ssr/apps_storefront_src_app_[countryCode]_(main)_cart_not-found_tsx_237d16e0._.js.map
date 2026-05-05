@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file:///home/kabor/curases/apps/storefront/src/app/%5BcountryCode%5D/%28main%29/cart/not-found.tsx"],"sourcesContent":["import { Metadata } from \"next\"\n\nimport InteractiveLink from \"@modules/common/components/interactive-link\"\n\nexport const metadata: Metadata = {\n  title: \"404\",\n  description: \"Something went wrong\",\n}\n\nexport default function NotFound() {\n  return (\n    <div className=\"flex flex-col items-center justify-center min-h-[calc(100vh-64px)]\">\n      <h1 className=\"text-2xl-semi text-ui-fg-base\">Page not found</h1>\n      <p className=\"text-small-regular text-ui-fg-base\">\n        The cart you tried to access does not exist. Clear your cookies and try\n        again.\n      </p>\n      <InteractiveLink href=\"/\">Go to frontpage</InteractiveLink>\n    </div>\n  )\n}\n"],"names":[],"mappings":";;;;;AAEA;;;AAEO,MAAM,WAAqB;IAChC,OAAO;IACP,aAAa;AACf;AAEe,SAAS;IACtB,qBACE,8OAAC;QAAI,WAAU;;0BACb,8OAAC;gBAAG,WAAU;0BAAgC;;;;;;0BAC9C,8OAAC;gBAAE,WAAU;0BAAqC;;;;;;0BAIlD,8OAAC,6LAAA,CAAA,UAAe;gBAAC,MAAK;0BAAI;;;;;;;;;;;;AAGhC","debugId":null}}]
+}

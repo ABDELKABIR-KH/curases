@@ -1,0 +1,27 @@
+{
+  "pages": {
+    "/[countryCode]/(main)/order/[id]/confirmed/page": [
+      "static/chunks/node_modules_next_dist_1a6ee436._.js",
+      "static/chunks/apps_storefront_src_app_twitter-image_jpg_mjs_b161e75b._.js",
+      "static/chunks/apps_storefront_src_styles_globals_b3985d43.css",
+      "static/chunks/apps_storefront_src_app_layout_tsx_ce748aeb._.js",
+      "static/chunks/node_modules_next_dist_b758c999._.js",
+      "static/chunks/apps_storefront_src_app_not-found_tsx_f003ce39._.js",
+      "static/chunks/apps_storefront_src_d80d5cb3._.js",
+      "static/chunks/node_modules_next_b269154c._.js",
+      "static/chunks/node_modules_@headlessui_react_dist_830b069c._.js",
+      "static/chunks/node_modules_@floating-ui_react_dist_c1a64d8e._.js",
+      "static/chunks/node_modules_01e88fdc._.js",
+      "static/chunks/apps_storefront_src_app_[countryCode]_(main)_layout_tsx_f003ce39._.js",
+      "static/chunks/apps_storefront_src_c5dca911._.js",
+      "static/chunks/d0b2b_storefront_src_app_[countryCode]_(main)_order_[id]_confirmed_page_tsx_ab8fffb8._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_57cd06f1._.js",
+      "static/chunks/node_modules_next_dist_compiled_2ce9398a._.js",
+      "static/chunks/node_modules_next_dist_client_8f19e6fb._.js",
+      "static/chunks/node_modules_next_dist_0eb1e458._.js",
+      "static/chunks/ed0b0_@swc_helpers_cjs_d9e50ee1._.js",
+      "static/chunks/apps_storefront_e69f0d32._.js",
+      "static/chunks/apps_storefront_3cde29d5._.js"
+    ]
+  }
+}

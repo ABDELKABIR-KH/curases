@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 39, "column": 0}, "map": {"version":3,"sources":["file:///home/kabor/curases/apps/storefront/src/modules/common/components/localized-client-link/index.tsx"],"sourcesContent":["\"use client\"\n\nimport Link from \"next/link\"\nimport { useParams } from \"next/navigation\"\nimport React from \"react\"\n\n/**\n * Use this component to create a Next.js `<Link />` that persists the current country code in the url,\n * without having to explicitly pass it as a prop.\n */\nconst LocalizedClientLink = ({\n  children,\n  href,\n  ...props\n}: {\n  children?: React.ReactNode\n  href: string\n  className?: string\n  onClick?: () => void\n  passHref?: true\n  [x: string]: unknown\n}) => {\n  const { countryCode } = useParams()\n\n  return (\n    <Link href={`/${countryCode}${href}`} {...props}>\n      {children}\n    </Link>\n  )\n}\n\nexport default LocalizedClientLink\n"],"names":[],"mappings":";;;;AAEA;AACA;AAHA;;;;AAMA;;;CAGC,GACD,MAAM,sBAAsB,CAAC,EAC3B,QAAQ,EACR,IAAI,EACJ,GAAG,OAQJ;IACC,MAAM,EAAE,WAAW,EAAE,GAAG,CAAA,GAAA,kIAAA,CAAA,YAAS,AAAD;IAEhC,qBACE,8OAAC,4JAAA,CAAA,UAAI;QAAC,MAAM,CAAC,CAAC,EAAE,cAAc,MAAM;QAAG,GAAG,KAAK;kBAC5C;;;;;;AAGP;uCAEe","debugId":null}}]
+}

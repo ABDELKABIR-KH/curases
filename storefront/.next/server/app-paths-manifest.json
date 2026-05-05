@@ -1,0 +1,9 @@
+{
+  "/[countryCode]/(checkout)/checkout/page": "app/[countryCode]/(checkout)/checkout/page.js",
+  "/[countryCode]/(main)/cart/page": "app/[countryCode]/(main)/cart/page.js",
+  "/[countryCode]/(main)/categories/[...category]/page": "app/[countryCode]/(main)/categories/[...category]/page.js",
+  "/[countryCode]/(main)/order/[id]/confirmed/page": "app/[countryCode]/(main)/order/[id]/confirmed/page.js",
+  "/[countryCode]/(main)/page": "app/[countryCode]/(main)/page.js",
+  "/[countryCode]/(main)/products/[handle]/page": "app/[countryCode]/(main)/products/[handle]/page.js",
+  "/[countryCode]/(main)/store/page": "app/[countryCode]/(main)/store/page.js"
+}

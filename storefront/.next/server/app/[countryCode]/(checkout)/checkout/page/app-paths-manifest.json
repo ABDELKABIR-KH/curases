@@ -1,0 +1,3 @@
+{
+  "/[countryCode]/(checkout)/checkout/page": "app/[countryCode]/(checkout)/checkout/page.js"
+}
