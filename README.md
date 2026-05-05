@@ -106,6 +106,24 @@ Expected local URLs:
 - Backend/Admin: `http://localhost:9000`
 - Storefront: `http://localhost:8000`
 
+## Production deployment (e.g. Railway)
+
+Set **root directory** to `backend`. After `medusa build`, Medusa expects install + migrate + start from `.medusa/server` ([build & deploy](https://docs.medusajs.com/learn/build)).
+
+Example start:
+
+```bash
+cd .medusa/server && npm ci && NODE_ENV=production npm run predeploy && npm run start
+```
+
+Backend `package.json` includes `predeploy` → `medusa db:migrate`. Set in your host:
+
+- `MEDUSA_BACKEND_URL` — public API URL (Railway gives you one; admin uses this via `medusa-config`).
+- `MEDUSA_WORKER_MODE` — `server` on the web service, `worker` on a second identical service for background jobs ([worker mode](https://docs.medusajs.com/learn/deployment/general)).
+- `DISABLE_MEDUSA_ADMIN` — `false` on server, `true` on worker.
+
+Local dev defaults: `MEDUSA_WORKER_MODE=shared`, `DISABLE_MEDUSA_ADMIN=false`, `MEDUSA_BACKEND_URL=http://localhost:9000` (see `backend/.env.template`).
+
 ## Why `npx medusa db:migrate` May Fail
 
 Common causes:
