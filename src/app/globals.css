@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/*
+ * Curases design tokens
+ * Adapted from the Paper design: warm paper whites, soft ink greys,
+ * a single blue accent, and a restrained editorial type scale.
+ */
+@theme inline {
+  --font-sans: var(--font-nunito), system-ui, sans-serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-wordmark: var(--font-playpen), var(--font-nunito), system-ui, sans-serif;
+}
+
+@theme {
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --color-ink: #222222;
+  --color-heading: #000000c7;
+  --color-body: #333333;
+  --color-muted: #737373;
+  --color-faint: #00000040;
+  --color-label: #000000b3;
+  --color-line: #00000014;
+  --color-panel: #00000006;
+  --color-state: #ededed;
+  --color-surface: #f9f9f9;
+  --color-control: #efefef;
+  --color-link: #2480ed;
+  --color-border: #e5e3e0;
+  --color-code: #343740;
+  --color-code-muted: #717784;
+  --color-syntax-red: #ba4162;
+  --color-syntax-blue: #286cb7;
+  --color-syntax-green: #16816b;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #222222;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-nunito), system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+pre,
+code,
+kbd,
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+::selection {
+  background: rgba(36, 128, 237, 0.15);
+  color: #1e5fb8;
+}

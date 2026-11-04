@@ -1,0 +1,224 @@
+# Curases Comprehensive Agent Integration Specification (llms-full.txt)
+
+Curases is an agentic, zero-dependency custom cursor engine built for modern web applications.
+Base URL: https://curases.com
+CDN Engine: https://curases.com/engine.js
+Registry API: https://curases.com/api/registry
+Manifest: https://curases.com/cursors/manifest.json
+
+---
+
+## 1. Architectural Overview
+
+Curases renders custom SVGs inside a high-z-index hardware-accelerated DOM container (`#custom-cursor`) positioned using CSS `transform: translate3d(tx, ty, 0)`.
+- Coordinate calculations are offset by each state's defined `hotspots` vector: `(x - hotspotX * size, y - hotspotY * size)`.
+- Position smoothing uses lerp (linear interpolation) on each `requestAnimationFrame`:
+  `tx += (targetX - tx) * speed`
+  `ty += (targetY - ty) * speed`
+- Native OS cursor is suppressed via `* { cursor: none !important; }` unless `data-hide-native="false"`.
+
+---
+
+## 2. Cursor State Specifications
+Each cursor preset defines SVG assets for the following semantic states:
+1. `normal`: Default state when hovering general non-interactive elements.
+2. `hover`: Activated over links (`<a>`), buttons (`<button>`), `[role="button"]`, and elements with `data-cursor-state="hover"`.
+3. `click`: Activated while pointer is pressed down (`mousedown`).
+4. `typing`: Activated when hovering or focusing input fields (`input[type="text"]`, `input[type="email"]`, `input[type="password"]`, `textarea`, `[contenteditable]`).
+5. `drag`: Activated when dragging draggable elements (`[draggable="true"]` or `mousedown` on interactive sliders).
+6. `resize-h`: Activated over elements with cursor resize horizontal styles.
+7. `resize-v`: Activated over elements with cursor resize vertical styles.
+8. `move`: Activated over draggable dialogs/headers.
+9. `not-allowed`: Activated over `[disabled]` buttons or `aria-disabled="true"`.
+
+---
+
+## 3. Framework Integration Recipes
+
+### Next.js 14/15 App Router (`app/layout.tsx`)
+```tsx
+import type { Metadata } from "next";
+import Script from "next/script";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "My Curases App",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <Script
+          src="https://curases.com/engine.js"
+          strategy="afterInteractive"
+          data-cursor="Handy"
+          data-size="1.0"
+          data-speed="1.0"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+### Next.js Pages Router (`pages/_app.tsx`)
+```tsx
+import type { AppProps } from "next/app";
+import Script from "next/script";
+
+export default function App({ Component, pageProps }: AppProps) {
+  return (
+    <>
+      <Script
+        src="https://curases.com/engine.js"
+        strategy="afterInteractive"
+        data-cursor="Handy"
+        data-size="1.0"
+      />
+      <Component {...pageProps} />
+    </>
+  );
+}
+```
+
+### React Custom Hook (`useCurases.ts`)
+```tsx
+import { useEffect } from "react";
+
+declare global {
+  interface Window {
+    Curases?: {
+      load: (id: string) => void;
+      setSize: (size: number) => void;
+      setSpeed: (speed: number) => void;
+      setColor: (color: string) => void;
+      setRoughness: (roughness: number) => void;
+      setBoil: (boil: number) => void;
+      state: (state: string) => void;
+      show: () => void;
+      hide: () => void;
+    };
+  }
+}
+
+interface CurasesOptions {
+  cursor?: "Handy" | string;
+  size?: number;
+  speed?: number;
+  color?: string;
+  roughness?: number;
+  boil?: number;
+}
+
+export function useCurases(options: CurasesOptions = {}) {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (!window.Curases) {
+      const script = document.createElement("script");
+      script.src = "https://curases.com/engine.js";
+      script.setAttribute("data-cursor", options.cursor || "Handy");
+      if (options.size) script.setAttribute("data-size", String(options.size));
+      if (options.speed) script.setAttribute("data-speed", String(options.speed));
+      if (options.color) script.setAttribute("data-color", options.color);
+      if (options.roughness) script.setAttribute("data-roughness", String(options.roughness));
+      if (options.boil !== undefined) script.setAttribute("data-boil", String(options.boil));
+      script.defer = true;
+      document.head.appendChild(script);
+    } else {
+      if (options.cursor) window.Curases.load(options.cursor);
+      if (options.size) window.Curases.setSize(options.size);
+      if (options.speed) window.Curases.setSpeed(options.speed);
+      if (options.color) window.Curases.setColor(options.color);
+      if (options.roughness !== undefined) window.Curases.setRoughness(options.roughness);
+      if (options.boil !== undefined) window.Curases.setBoil(options.boil);
+    }
+  }, [options.cursor, options.size, options.speed, options.color, options.roughness, options.boil]);
+}
+```
+
+### Vue 3 / Nuxt 3 Composable
+```vue
+<script setup>
+import { onMounted } from "vue";
+
+onMounted(() => {
+  if (!document.getElementById("curases-script")) {
+    const s = document.createElement("script");
+    s.id = "curases-script";
+    s.src = "https://curases.com/engine.js";
+    s.dataset.cursor = "Handy";
+    s.dataset.size = "1.0";
+    s.defer = true;
+    document.body.appendChild(s);
+  }
+});
+</script>
+```
+
+### Static HTML / Webflow / Shopify
+```html
+<!-- Curases Custom Cursor -->
+<script 
+  src="https://curases.com/engine.js" 
+  data-cursor="Handy" 
+  data-size="1.0" 
+  data-speed="1.0" 
+  defer>
+</script>
+```
+
+---
+
+## 4. REST Registry Endpoints
+
+### List all cursors:
+`GET https://curases.com/api/registry`
+Response:
+```json
+{
+  "version": "1.0.0",
+  "engineUrl": "https://curases.com/engine.js",
+  "cursors": [
+    {
+      "id": "Handy",
+      "name": "Handy Cursor",
+      "description": "Expressive hand-drawn multi-state cursor with precision responsive transformations.",
+      "previewUrl": "https://curases.com/cursors/handy.json"
+    }
+  ]
+}
+```
+
+---
+
+## 5. Cursor JSON Schema
+A Curases cursor file (e.g., `blue.json`) is formatted as:
+```json
+{
+  "name": "blue",
+  "states": {
+    "normal": "<svg ...>...</svg>",
+    "hover": "<svg ...>...</svg>",
+    "click": "<svg ...>...</svg>",
+    "typing": "<svg ...>...</svg>",
+    "drag": "<svg ...>...</svg>",
+    "resize-h": "<svg ...>...</svg>",
+    "resize-v": "<svg ...>...</svg>",
+    "move": "<svg ...>...</svg>",
+    "not-allowed": "<svg ...>...</svg>"
+  },
+  "hotspots": {
+    "default": [0, 0],
+    "normal": [10, 8],
+    "typing": [10, 8]
+  }
+}
+```
+Hotspot coordinates determine the exact active clicking pixel of the SVG.

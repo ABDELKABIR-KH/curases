@@ -1,0 +1,352 @@
+/* =========================================================
+   Curases Preview Card & Draggable Carousel
+   Matches Curases Next.js Design Language:
+   Soft paper surfaces, ink typography, minimal borders
+   ========================================================= */
+
+.preview-window {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  border-radius: 10px;
+  background: var(--color-panel, rgba(0, 0, 0, 0.024));
+  border: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Hide OS cursor anywhere on or inside preview */
+.preview-window,
+.preview-window *,
+.preview-window::before,
+.preview-window::after {
+  cursor: none !important;
+}
+
+/* Hide the outside global cursor whenever hovering over the preview sandbox */
+body:has(.preview-window:hover) #custom-cursor,
+body:has([data-curases-sandbox]:hover) #custom-cursor {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Mini cursor following pointer */
+.preview-mini-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transform-origin: top left;
+  z-index: 40;
+  will-change: transform;
+}
+
+/* Idle demo: Framer Motion drives this copy of the cursor while the pointer
+   is outside the sandbox. */
+.preview-idle-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  pointer-events: none;
+  transform-origin: top left;
+  will-change: transform;
+}
+
+.preview-window.is-idle .preview-mini-cursor {
+  opacity: 0;
+}
+
+/* Apply color override: only recolor the inner body (white fills), leaving black outline intact */
+.preview-mini-cursor.color-custom svg path[fill="white"],
+.preview-mini-cursor.color-custom svg path[fill="#ffffff"],
+.preview-mini-cursor.color-custom svg path[fill="#fff"],
+.preview-mini-cursor.color-custom svg path.curases-sketch-frame[fill="white"],
+.preview-mini-cursor.color-custom svg path.curases-sketch-frame[fill="#ffffff"],
+.preview-mini-cursor.color-custom svg path.curases-sketch-frame[fill="#fff"],
+.preview-idle-cursor.color-custom svg path[fill="white"],
+.preview-idle-cursor.color-custom svg path[fill="#ffffff"],
+.preview-idle-cursor.color-custom svg path[fill="#fff"],
+.preview-idle-cursor.color-custom svg path.curases-sketch-frame[fill="white"],
+.preview-idle-cursor.color-custom svg path.curases-sketch-frame[fill="#ffffff"],
+.preview-idle-cursor.color-custom svg path.curases-sketch-frame[fill="#fff"],
+.preview-state-card.color-custom svg path[fill="white"],
+.preview-state-card.color-custom svg path[fill="#ffffff"],
+.preview-state-card.color-custom svg path[fill="#fff"],
+.preview-state-card.color-custom svg path.curases-sketch-frame[fill="white"],
+.preview-state-card.color-custom svg path.curases-sketch-frame[fill="#ffffff"],
+.preview-state-card.color-custom svg path.curases-sketch-frame[fill="#fff"] {
+  fill: currentColor !important;
+}
+
+/* Black outline thickness control via SVG paint-order stroke expansion */
+.preview-mini-cursor svg path[fill="black"],
+.preview-mini-cursor svg path[fill="#000000"],
+.preview-mini-cursor svg path[fill="#000"],
+.preview-mini-cursor svg path[fill="#1E1E1E"],
+.preview-mini-cursor svg path.curases-sketch-frame[fill="black"],
+.preview-mini-cursor svg path.curases-sketch-frame[fill="#000000"],
+.preview-mini-cursor svg path.curases-sketch-frame[fill="#000"],
+.preview-mini-cursor svg path.curases-sketch-frame[fill="#1E1E1E"],
+.preview-state-card svg path[fill="black"],
+.preview-state-card svg path[fill="#000000"],
+.preview-state-card svg path[fill="#000"],
+.preview-state-card svg path[fill="#1E1E1E"],
+.preview-state-card svg path.curases-sketch-frame[fill="black"],
+.preview-state-card svg path.curases-sketch-frame[fill="#000000"],
+.preview-state-card svg path.curases-sketch-frame[fill="#000"],
+.preview-state-card svg path.curases-sketch-frame[fill="#1E1E1E"] {
+  stroke: #000000;
+  stroke-width: var(--curases-outline-width, 0px);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+}
+
+/* =========================================================
+   LEFT/RIGHT FADING GRADIENT MASKS
+   ========================================================= */
+.preview-window::before,
+.preview-window::after {
+  content: "";
+  position: absolute;
+  bottom: 12px;
+  width: 56px;
+  height: 48px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.preview-window::before {
+  left: 0;
+  background: linear-gradient(to right, #f9f9f9 0%, transparent 100%);
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.preview-window::after {
+  right: 0;
+  background: linear-gradient(to left, #f9f9f9 0%, transparent 100%);
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+/* =========================================================
+   DRAGGABLE EMBLA CAROUSEL
+   Styled after the Paper design's "State carousel":
+   48px rounded clip strip, 4px inset, 40px cards, 10px gaps.
+   ========================================================= */
+.preview-embla-wrapper {
+  position: absolute;
+  /* Paper insets: 16px sides / 12px bottom from the sandbox edge */
+  bottom: 12px;
+  left: 16px;
+  right: 16px;
+  width: auto;
+  height: 48px;
+  padding: 4px;
+  border-radius: 16px;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.preview-embla-viewport {
+  overflow: visible;
+  width: 100%;
+  height: 40px;
+  touch-action: pan-y;
+}
+
+.preview-embla-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+}
+
+.preview-embla-slide {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* =========================================================
+   STATE CARDS (Paper: 40px, r12, #EDEDED fill)
+   ========================================================= */
+.preview-state-card {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--color-state, #ededed);
+  border: 0;
+  color: var(--color-muted, #737373);
+  opacity: 1;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.18s ease,
+    color 0.18s ease;
+  box-shadow: none;
+  user-select: none;
+}
+
+.preview-state-card svg {
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  opacity: 0.5;
+  transition: opacity 0.18s ease;
+}
+
+.preview-state-card:hover {
+  transform: scale(1.06);
+  background: #e6e6e6;
+  color: var(--color-ink, #222222);
+}
+
+.preview-state-card:hover svg {
+  opacity: 0.85;
+}
+
+/* Active centered card */
+.preview-state-card.active {
+  transform: scale(1.1);
+  background: var(--color-state, #ededed);
+  color: var(--color-ink, #222222);
+  box-shadow: 0 0 0 0.8px var(--color-ink, #222222);
+}
+
+.preview-state-card.active svg {
+  opacity: 1;
+}
+
+/* =========================================================
+   BOIL ANIMATION FOR ROUGHNESS SKETCH FRAMES
+   ========================================================= */
+@keyframes curases-boil-0 {
+  0%, 33.32% { opacity: 1; }
+  33.33%, 100% { opacity: 0; }
+}
+
+@keyframes curases-boil-1 {
+  0%, 33.32% { opacity: 0; }
+  33.33%, 66.65% { opacity: 1; }
+  66.66%, 100% { opacity: 0; }
+}
+
+@keyframes curases-boil-2 {
+  0%, 66.65% { opacity: 0; }
+  66.66%, 100% { opacity: 1; }
+}
+
+.preview-window .curases-sketch-frame {
+  opacity: 1;
+}
+
+.preview-window:not(.boil-off) .curases-sketch-frame[data-i="0"] {
+  animation: curases-boil-0 1200ms step-end infinite;
+}
+
+.preview-window:not(.boil-off) .curases-sketch-frame[data-i="1"] {
+  animation: curases-boil-1 1200ms step-end infinite;
+}
+
+.preview-window:not(.boil-off) .curases-sketch-frame[data-i="2"] {
+  animation: curases-boil-2 1200ms step-end infinite;
+}
+
+/* When boil is 0 or user prefers reduced motion, show only frame 0 */
+.preview-window.boil-off .curases-sketch-frame {
+  animation: none !important;
+  opacity: 0 !important;
+}
+.preview-window.boil-off .curases-sketch-frame[data-i="0"] {
+  opacity: 1 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preview-window .curases-sketch-frame {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+  .preview-window .curases-sketch-frame[data-i="0"] {
+    opacity: 1 !important;
+  }
+}
+
+/* =========================================================
+   TOOLTIP
+   ========================================================= */
+.preview-state-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  z-index: 30;
+  padding: 3px 8px;
+  background: #222222;
+  color: #ffffff;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Tooltip arrow */
+.preview-state-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: #222222 transparent transparent transparent;
+}
+
+/* =========================================================
+   STATUS BADGE & TOP CONTROLS
+   ========================================================= */
+.preview-status-badge {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.preview-status-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-muted, #737373);
+}
+
+.preview-reset-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: var(--color-muted, #737373);
+  transition: all 0.15s ease;
+  z-index: 20;
+}
+
+.preview-reset-btn:hover {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--color-ink, #222222);
+}
+
+

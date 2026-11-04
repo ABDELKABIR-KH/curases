@@ -1,0 +1,114 @@
+# Curases — Agentic Custom Cursor Engine for the Web
+
+> Curases (https://curases.com) is a zero-dependency, ultra-lightweight custom cursor engine designed for modern web applications and AI coding agents. It provides physics-based cursor motion, automatic state detection (hover, click, typing, drag, resize, not-allowed), and designer-grade SVG cursor styles across any framework.
+
+## Key Capabilities
+- **Universal Compatibility**: Works with Vanilla HTML, Next.js (App & Pages Router), React, Vue, Svelte, Astro, Webflow, Shopify, WordPress, and more.
+- **Physics & Smoothing**: Smooth interpolation (`speed` multiplier from `0.1` to `1.0`), dynamic scaling (`size` multiplier), and color tinting (`color` hex/rgb).
+- **Auto State Detection**: Automatically responds to `<a>`, `<button>`, `input[type="text"]`, `textarea`, `[draggable]`, disabled elements, and custom `[data-cursor-state]`.
+- **Zero Layout Shift & High Performance**: Hardware-accelerated GPU transforms (`translate3d`), passive listeners, zero external runtime dependencies.
+
+---
+
+## 1-Minute Quickstart
+
+### Option 1: Universal CDN Script Tag (Any HTML / CMS / Framework)
+Place this tag in the `<head>` or at the end of `<body>`:
+```html
+<script 
+  src="https://curases.com/engine.js" 
+  data-cursor="Handy" 
+  data-size="1.0" 
+  data-speed="1.0" 
+  data-color="#3b82f6"
+  defer>
+</script>
+```
+
+### Option 2: Next.js (App Router `layout.tsx`)
+```tsx
+import Script from "next/script";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <Script
+          src="https://curases.com/engine.js"
+          strategy="afterInteractive"
+          data-cursor="Handy"
+          data-size="1.0"
+          data-speed="1.0"
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+### Option 3: React / Vite / SPA
+```tsx
+import { useEffect } from "react";
+
+export function CustomCursor() {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://curases.com/engine.js";
+    script.setAttribute("data-cursor", "Handy");
+    script.setAttribute("data-size", "1.0");
+    script.setAttribute("data-speed", "1.0");
+    script.defer = true;
+    document.body.appendChild(script);
+
+    return () => {
+      script.remove();
+      window.Curases?.hide();
+    };
+  }, []);
+
+  return null;
+}
+```
+
+---
+
+## Script Attributes & Parameters
+- `data-cursor`: Name of the cursor pack (`"Handy"`). Case-insensitive.
+- `data-size`: Unitless scale factor (`1.0` = default 32x32px). There is no fixed pixel measurement to drift across zoom or DPI; increase it for a larger cursor.
+- `data-speed`: Lag/inertia factor between `0.1` (heavy smooth trail) and `1.0` (instant real-time tracking).
+- `data-color`: Hex (`#00ffcc`) or RGB (`rgb(0, 255, 204)`) color override. Omit to preserve designer SVG fills.
+- `data-roughness`: Hand-drawn path roughness (`0` = clean/solid lines, `0.5` = subtle pen wobble, `2.0` = maximum sketchy wobble). Paths are re-drawn with seeded per-point jitter.
+- `data-boil`: Animated sketch flicker from `0` (static sketch) to `1.0` (maximum boil). Defaults to `0.3`.
+- `data-hide-native`: `"true"` (default) automatically hides the native OS cursor using CSS. Set `"false"` to keep native cursor visible.
+
+---
+
+## JavaScript Runtime API (`window.Curases`)
+When the script is loaded, `window.Curases` exposes:
+- `Curases.load(cursorId)`: Switch cursor pack on the fly (e.g. `Curases.load("Handy")`).
+- `Curases.setSize(number)`: Change cursor size multiplier.
+- `Curases.setSpeed(number)`: Adjust smoothing factor (`0.1` - `1.0`).
+- `Curases.setColor(string)`: Override color tint.
+- `Curases.setRoughness(number)`: Live-update the hand-drawn sketch roughness (`0` - `2`).
+- `Curases.setBoil(number)`: Live-update the boil flicker amount (`0` = static, `1` = max).
+- `Curases.state(string)`: Force a specific state (`"hover"`, `"typing"`, `"drag"`, `"normal"`).
+- `Curases.hide()` / `Curases.show()`: Toggle cursor visibility.
+
+---
+
+## Ready Prompts for AI Agents (Cursor, Claude Code, Windsurf, Copilot, v0)
+
+### Ready Prompt: Add Curases to Any Project
+> "Install the Curases custom cursor engine in this project using the 'Handy' cursor style with size 1.0 and speed 1.0. Reference documentation from https://curases.com/llms.txt. Add the script cleanly to the root layout or index.html and ensure native cursor hiding does not conflict with input text selection."
+
+### Ready Prompt: Custom State Overrides
+> "Configure custom hover states for our primary CTA cards using Curases: add data-cursor-state='hover' to the card elements and verify smooth state switching."
+
+---
+
+## Full Documentation & Specifications
+For complete technical schemas, state vectors, and REST endpoints, visit:
+- Full Spec: https://curases.com/llms-full.txt
+- Registry API: https://curases.com/api/registry
+- Cursors Manifest: https://curases.com/cursors/manifest.json
