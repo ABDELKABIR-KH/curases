@@ -246,8 +246,7 @@ export default function Home() {
 
   const agentPrompt = `Install Curases, the custom cursor engine, with the "Handy" preset, size ${sizeVal.toFixed(1)}x, speed ${speedVal.toFixed(1)}${colorParam}${roughnessParam}${boilParam}. Docs: https://curases.com/llms.txt`;
   const scriptTag = `<script src="https://www.curases.com/engine.js" data-cursor="Handy" data-size="${sizeVal.toFixed(1)}" data-speed="${speedVal.toFixed(1)}"${colorAttr}${roughnessAttr}${boilAttr} defer></script>`;
-  const componentTag = `<Curases cursor="Handy" size={${sizeVal.toFixed(1)}} speed={${speedVal.toFixed(1)}}${selectedColor ? ` color="${selectedColor}"` : ""} />`;
-
+  
   const handleStateClick = (stateId: string) => {
     setActiveCursorState(stateId);
     ((window.Curases || window.CustomCursor) as any)?.state(stateId);
@@ -724,21 +723,7 @@ export default function Home() {
                   </span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    copyToClipboard(componentTag, setCopiedFloatingPrompt);
-                    setIsCopyMenuOpen(false);
-                  }}
-                  className="w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface cursor-pointer"
-                >
-                  <span className="block font-body text-[12px] font-medium text-ink">
-                    Copy React component
-                  </span>
-                  <span className="mt-0.5 block font-body text-[11px] text-muted">
-                    Next.js App Router, Vite
-                  </span>
-                </button>
+
               </div>
             )}
           </div>
