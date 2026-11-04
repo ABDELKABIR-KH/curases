@@ -5,40 +5,53 @@ import { Check, ChevronDown, Copy } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
 import { HANDY_CURSOR } from "@/lib/cursorData";
 
-type AgentType = "Claude Code" | "Cursor" | "Next.js / React" | "Plain HTML / CDN";
+type InstallMethod =
+  | "npx (Recommended)"
+  | "Next.js / React (npm)"
+  | "Plain HTML / CDN"
+  | "Claude Code / Cursor";
 
-const AGENT_CONFIGS: Record<
-  AgentType,
-  {
-    command: string;
-    docLinkText: string;
-    docUrl: string;
-    note: string;
-  }
-> = {
-  "Claude Code": {
-    command: "claude mcp add curases -- npx -y curases-mcp-server",
-    docLinkText: "Claude Code MCP documentation ↗",
-    docUrl: "https://curases.com/llms.txt",
-    note: "Restart your agent or reload its MCP servers after configuration. Your agent starts the server when it connects.",
+interface InstallConfig {
+  command: string;
+  docLinkText: string;
+  docUrl: string;
+  note: string;
+  snippetLabel: string;
+  snippetCode: string;
+}
+
+const INSTALL_CONFIGS: Record<InstallMethod, InstallConfig> = {
+  "npx (Recommended)": {
+    command: "npx curases handy",
+    docLinkText: "Interactive CLI guide ↗",
+    docUrl: "https://www.npmjs.com/package/curases",
+    note: "Auto-detects your project (Next.js, React, Vite, or HTML), installs the package, and configures the cursor automatically.",
+    snippetLabel: "Terminal command",
+    snippetCode: `# Run inside your project root:\nnpx curases handy\n\n# Or pick from an interactive menu:\nnpx curases`,
   },
-  Cursor: {
-    command: "npx curases install --agent cursor",
-    docLinkText: "Cursor MCP documentation ↗",
-    docUrl: "https://curases.com/llms.txt",
-    note: "Configures .cursor/mcp.json automatically for your project workspace.",
-  },
-  "Next.js / React": {
+  "Next.js / React (npm)": {
     command: "npm install curases",
-    docLinkText: "Next.js App Router integration guide ↗",
-    docUrl: "https://curases.com/llms.txt",
-    note: "Add the Script tag to app/layout.tsx to enable zero-latency hardware accelerated cursor physics.",
+    docLinkText: "View package on npm ↗",
+    docUrl: "https://www.npmjs.com/package/curases",
+    note: "Zero-dependency client package. Import <Curases /> into app/layout.tsx with full TypeScript support and SSR safety.",
+    snippetLabel: "app/layout.tsx",
+    snippetCode: `import { Curases } from "curases/react";\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang="en">\n      <body>\n        <Curases cursor="Handy" size={1.5} speed={1} />\n        {children}\n      </body>\n    </html>\n  );\n}`,
   },
   "Plain HTML / CDN": {
-    command: '<script src="https://curases.com/engine.js" data-cursor="Handy" defer></script>',
-    docLinkText: "CDN Quickstart documentation ↗",
+    command: '<script src="https://www.curases.com/engine.js" data-cursor="Handy" defer></script>',
+    docLinkText: "CDN Integration guide ↗",
     docUrl: "https://curases.com/llms.txt",
-    note: "Paste before closing </head> tag on any Webflow, Shopify, Framer, or static website.",
+    note: "Zero-install script tag. Paste before the closing </head> tag on Webflow, Shopify, Framer, WordPress, or static HTML.",
+    snippetLabel: "index.html",
+    snippetCode: `<!-- Add inside <head> -->\n<script\n  src="https://www.curases.com/engine.js"\n  data-cursor="Handy"\n  data-size="1.5"\n  data-speed="1"\n  defer\n></script>`,
+  },
+  "Claude Code / Cursor": {
+    command: "claude mcp add curases -- npx -y curases-mcp-server",
+    docLinkText: "Claude Code & Cursor MCP docs ↗",
+    docUrl: "https://curases.com/llms.txt",
+    note: "Let your AI coding agents install presets, tweak physics, and configure cursors directly in your workspace.",
+    snippetLabel: "Agent configuration",
+    snippetCode: `# Register MCP server with your AI agent:\nclaude mcp add curases -- npx -y curases-mcp-server\n\n# Or configure via Cursor:\nnpx curases install --agent cursor`,
   },
 };
 
@@ -103,14 +116,14 @@ function CodeBlock({
   return (
     <div className={`relative ${className}`}>
       <div className="overflow-clip rounded-[10px] bg-panel py-3 pr-12 pl-4">
-        <code className="block wrap-anywhere font-mono text-xs leading-5 text-code">
+        <code className="block wrap-anywhere font-mono text-xs leading-5 text-code whitespace-pre">
           {children}
         </code>
       </div>
       <button
         type="button"
         onClick={onCopy}
-        className="absolute top-2 right-2 flex items-center justify-center rounded-sm p-1 text-[#777777] transition-colors hover:text-ink"
+        className="absolute top-2 right-2 flex items-center justify-center rounded-sm p-1 text-[#777777] transition-colors hover:text-ink cursor-pointer"
         title={`Copy ${code}`}
         aria-label="Copy to clipboard"
       >
@@ -125,8 +138,8 @@ function CodeBlock({
 }
 
 export default function Home() {
-  const [selectedAgent, setSelectedAgent] = useState<AgentType>("Claude Code");
-  const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<InstallMethod>("npx (Recommended)");
+  const [isMethodMenuOpen, setIsMethodMenuOpen] = useState(false);
   const [activeCursorState, setActiveCursorState] = useState("normal");
 
   // Floating bar controls
@@ -142,22 +155,21 @@ export default function Home() {
   // Copy feedback
   const [copiedStep1, setCopiedStep1] = useState(false);
   const [copiedStep2, setCopiedStep2] = useState(false);
-  const [copiedStep3, setCopiedStep3] = useState(false);
   const [copiedFloatingPrompt, setCopiedFloatingPrompt] = useState(false);
 
-  const agentDropdownRef = useRef<HTMLDivElement>(null);
+  const methodDropdownRef = useRef<HTMLDivElement>(null);
   const colorDropdownRef = useRef<HTMLDivElement>(null);
   const copyDropdownRef = useRef<HTMLDivElement>(null);
 
-  const activeAgent = AGENT_CONFIGS[selectedAgent];
+  const activeMethod = INSTALL_CONFIGS[selectedMethod];
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
-        agentDropdownRef.current &&
-        !agentDropdownRef.current.contains(e.target as Node)
+        methodDropdownRef.current &&
+        !methodDropdownRef.current.contains(e.target as Node)
       ) {
-        setIsAgentMenuOpen(false);
+        setIsMethodMenuOpen(false);
       }
       if (
         colorDropdownRef.current &&
@@ -178,10 +190,9 @@ export default function Home() {
   }, []);
 
   // Keep the live cursor engine in sync with the floating controls.
-  // The engine script loads after hydration, so retry briefly until it exists.
   useEffect(() => {
     const apply = () => {
-      const engine = window.Curases;
+      const engine = (window.Curases || window.CustomCursor) as any;
       if (!engine) return false;
 
       engine.setSize(sizeVal);
@@ -230,15 +241,16 @@ export default function Home() {
   const boilParam = boilVal > 0 ? `, boil ${boilVal.toFixed(1)}` : "";
   const roughnessAttr = roughnessVal > 0 ? ` data-roughness="${roughnessVal.toFixed(1)}"` : "";
   const boilAttr = boilVal > 0 ? ` data-boil="${boilVal.toFixed(1)}"` : "";
+  const colorParam = selectedColor ? `, color "${selectedColor}"` : "";
+  const colorAttr = selectedColor ? ` data-color="${selectedColor}"` : "";
 
-  const agentPrompt = `Install Curases, the custom cursor engine, with the "Handy" preset, size ${sizeVal.toFixed(1)}x, speed ${speedVal.toFixed(1)}${roughnessParam}${boilParam}. Docs: https://curases.com/llms.txt`;
-  const scriptTag = `<script src="https://curases.com/engine.js" data-cursor="Handy" data-size="${sizeVal.toFixed(1)}" data-speed="${speedVal.toFixed(1)}"${roughnessAttr}${boilAttr} defer></script>`;
-  const componentTag =
-    '<Curases endpoint="http://localhost:4347" cursor="Handy" />';
+  const agentPrompt = `Install Curases, the custom cursor engine, with the "Handy" preset, size ${sizeVal.toFixed(1)}x, speed ${speedVal.toFixed(1)}${colorParam}${roughnessParam}${boilParam}. Docs: https://curases.com/llms.txt`;
+  const scriptTag = `<script src="https://www.curases.com/engine.js" data-cursor="Handy" data-size="${sizeVal.toFixed(1)}" data-speed="${speedVal.toFixed(1)}"${colorAttr}${roughnessAttr}${boilAttr} defer></script>`;
+  const componentTag = `<Curases cursor="Handy" size={${sizeVal.toFixed(1)}} speed={${speedVal.toFixed(1)}}${selectedColor ? ` color="${selectedColor}"` : ""} />`;
 
   const handleStateClick = (stateId: string) => {
     setActiveCursorState(stateId);
-    window.Curases?.state(stateId);
+    ((window.Curases || window.CustomCursor) as any)?.state(stateId);
   };
 
   const toggleBoil = () => {
@@ -269,6 +281,14 @@ export default function Home() {
               Install
             </a>
             <a
+              href="https://www.npmjs.com/package/curases"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[12px] leading-[150%] font-semibold text-muted transition-colors hover:text-ink"
+            >
+              npm
+            </a>
+            <a
               href="/llms.txt"
               target="_blank"
               rel="noreferrer"
@@ -278,7 +298,7 @@ export default function Home() {
             </a>
           </nav>
           <span className="font-body text-[10px] leading-3 font-[450] text-faint underline decoration-dotted underline-offset-2">
-            v1.0
+            v0.2.0
           </span>
         </header>
 
@@ -290,9 +310,8 @@ export default function Home() {
             <h1 className="w-full text-[14px] leading-[22px] tracking-[-0.08px] text-body">
               <span className="font-wordmark font-semibold">Curases</span>{" "}
               <span className="font-sans font-semibold">
-                turns custom cursor physics and multi-state animations into
-                structured context that AI coding agents can understand and act
-                on.
+                is a zero-latency, hardware-accelerated custom cursor engine with
+                multi-state animations, live SVG physics, and instant npm or CDN deployment.
               </span>
             </h1>
 
@@ -319,62 +338,62 @@ export default function Home() {
             className="mt-4 scroll-mt-8 text-xs leading-4"
           >
             <RuleHeading className="font-sans font-bold">
-              Connect your agent
+              Installation & Integration
             </RuleHeading>
 
             <p className="mt-3 font-sans text-[14px] leading-[22px] font-semibold tracking-[-0.08px] text-body">
-              Claude Code, Cursor, Gemini CLI, and other MCP clients can connect
-              through Curases. Use Node.js 24 LTS for a new setup. Node.js 22
-              LTS and 20 are also compatible.
+              Install via npm, drop a 1-line CDN script tag into any website, or use
+              the interactive npx setup tool. The engine is centrally hosted on your
+              edge so bug fixes and new cursor presets update automatically without redeploying.
             </p>
 
             <h3 className="mt-6 mb-2 font-body text-[13px] leading-5 font-medium tracking-[-0.08px] text-label">
-              1. Register the MCP server
+              1. Choose your installation method
             </h3>
 
             <div className="mt-3 mb-4">
               <div className="flex items-center gap-3">
                 <span className="font-body text-xs leading-4 text-muted">
-                  Your agent
+                  Method
                 </span>
 
-                <div className="relative" ref={agentDropdownRef}>
+                <div className="relative" ref={methodDropdownRef}>
                   <button
                     type="button"
-                    onClick={() => setIsAgentMenuOpen((open) => !open)}
-                    aria-expanded={isAgentMenuOpen}
+                    onClick={() => setIsMethodMenuOpen((open) => !open)}
+                    aria-expanded={isMethodMenuOpen}
                     aria-haspopup="listbox"
-                    className="flex min-h-[34px] min-w-[180px] items-center justify-between gap-3 rounded-[10px] border-[0.8px] border-border bg-white px-[11px] py-[7px] text-left font-body text-[13px] leading-[140%] text-[#171716] transition-colors hover:border-[#D4D0CB]"
+                    className="flex min-h-[34px] min-w-[210px] items-center justify-between gap-3 rounded-[10px] border-[0.8px] border-border bg-white px-[11px] py-[7px] text-left font-body text-[13px] leading-[140%] text-[#171716] transition-colors hover:border-[#D4D0CB] cursor-pointer"
                   >
-                    <span className="min-w-0 truncate">{selectedAgent}</span>
+                    <span className="min-w-0 truncate">{selectedMethod}</span>
                     <span className="flex shrink-0 opacity-55">
                       <ChevronDown className="size-[18px]" strokeWidth={1.5} />
                     </span>
                   </button>
 
-                  {isAgentMenuOpen && (
+                  {isMethodMenuOpen && (
                     <div
                       role="listbox"
-                      className="absolute top-full right-0 z-30 mt-1.5 w-[180px] rounded-[10px] border border-border bg-white p-1 shadow-lg"
+                      className="absolute top-full left-0 z-30 mt-1.5 w-[220px] rounded-[10px] border border-border bg-white p-1 shadow-lg"
                     >
-                      {(Object.keys(AGENT_CONFIGS) as AgentType[]).map(
-                        (agent) => (
+                      {(Object.keys(INSTALL_CONFIGS) as InstallMethod[]).map(
+                        (method) => (
                           <button
-                            key={agent}
+                            key={method}
                             type="button"
                             role="option"
-                            aria-selected={selectedAgent === agent}
+                            aria-selected={selectedMethod === method}
                             onClick={() => {
-                              setSelectedAgent(agent);
-                              setIsAgentMenuOpen(false);
+                              setSelectedMethod(method);
+                              setIsMethodMenuOpen(false);
                             }}
-                            className={`w-full rounded-md px-2 py-1.5 text-left font-body text-[13px] leading-[140%] transition-colors ${
-                              selectedAgent === agent
+                            className={`w-full rounded-md px-2 py-1.5 text-left font-body text-[13px] leading-[140%] transition-colors cursor-pointer ${
+                              selectedMethod === method
                                 ? "bg-surface font-medium text-ink"
                                 : "text-muted hover:bg-surface hover:text-ink"
                             }`}
                           >
-                            {agent}
+                            {method}
                           </button>
                         ),
                       )}
@@ -383,186 +402,135 @@ export default function Home() {
                 </div>
               </div>
 
-              <p className="mt-2 font-body text-xs leading-[18px] font-[450] tracking-[-0.08px] text-muted">
-                Run this in your terminal with {selectedAgent} installed.
-              </p>
-
               <CodeBlock
                 className="my-3"
-                code={activeAgent.command}
+                code={activeMethod.command}
                 copied={copiedStep1}
                 onCopy={() =>
-                  copyToClipboard(activeAgent.command, setCopiedStep1)
+                  copyToClipboard(activeMethod.command, setCopiedStep1)
                 }
               >
-                {activeAgent.command}
+                {activeMethod.command}
               </CodeBlock>
 
               <div className="mt-2">
                 <a
-                  href={activeAgent.docUrl}
+                  href={activeMethod.docUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="font-body text-xs leading-[18px] font-[450] tracking-[-0.08px] text-link transition-colors hover:underline"
                 >
-                  {activeAgent.docLinkText}
+                  {activeMethod.docLinkText}
                 </a>
               </div>
 
               <p className="mt-3 font-body text-[14px] leading-[22px] font-[450] tracking-[-0.08px] text-body">
-                {activeAgent.note}
+                {activeMethod.note}
               </p>
             </div>
 
             <h3 className="mt-6 mb-2 font-body text-[13px] leading-5 font-medium tracking-[-0.08px] text-label">
-              2. Verify setup
+              2. {activeMethod.snippetLabel}
             </h3>
 
             <p className="mt-3 font-body text-[14px] leading-[22px] font-[450] tracking-[-0.08px] text-body">
-              Check that everything is configured correctly:
+              Add the snippet to your application:
             </p>
 
             <CodeBlock
               className="my-4"
-              code="npx curases verify"
+              code={activeMethod.snippetCode}
               copied={copiedStep2}
-              onCopy={() => copyToClipboard("npx curases verify", setCopiedStep2)}
+              onCopy={() => copyToClipboard(activeMethod.snippetCode, setCopiedStep2)}
             >
-              npx curases verify
+              {activeMethod.snippetCode}
             </CodeBlock>
 
-            <p className="mt-4 font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-              The server runs on port 4347 by default. Use{" "}
-              <InlineCode>--port 8080</InlineCode> to change it.
-            </p>
-
-            <h3 className="mt-4 mb-2 font-body text-[13px] leading-5 font-medium tracking-[-0.08px] text-label">
-              3. Connect the component
+            <h3 className="mt-6 mb-2 font-body text-[13px] leading-5 font-medium tracking-[-0.08px] text-label">
+              3. Thin client & hosted engine features
             </h3>
 
-            <p className="mt-3 font-body text-[14px] leading-[22px] font-[450] tracking-[-0.08px] text-body">
-              Point the React component to your server:
-            </p>
-
-            <CodeBlock
-              className="my-4"
-              code={componentTag}
-              copied={copiedStep3}
-              onCopy={() => copyToClipboard(componentTag, setCopiedStep3)}
-            >
-              <span className="text-code-muted">
-                &lt;<span className="text-syntax-red">Curases</span>{" "}
-                <span className="text-syntax-blue">endpoint</span>=
-                <span className="text-syntax-green">
-                  &quot;http://localhost:4347&quot;
-                </span>{" "}
-                <span className="text-syntax-blue">cursor</span>=
-                <span className="text-syntax-green">&quot;Handy&quot;</span>{" "}
-                <span className="text-syntax-red">/&gt;</span>
-              </span>
-            </CodeBlock>
-
-            <p className="mt-4 font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-              Cursor presets are stored locally and synced to the server when
-              connected. Registering the server with your agent does not load a
-              cursor for you. Drop the component into your page, then ask your
-              agent to list available cursors to check the complete connection.
-            </p>
-
-            <ul className="mt-4 flex flex-col gap-1 pl-4">
+            <ul className="mt-3 flex flex-col gap-2 pl-4">
               <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Local-first: Works offline; cursor presets load from your bundle
+                <strong className="text-ink">Zero Maintenance:</strong> The engine is served from <InlineCode>https://www.curases.com/engine.js</InlineCode>. Physics updates, optimizations, and new cursor presets roll out automatically without users needing to redeploy.
               </li>
               <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Session continuity: Keeps the active cursor state across page
-                transitions
+                <strong className="text-ink">Dual Distribution:</strong> Choose between a fully-typed npm package with React/Next.js components (<InlineCode>curases/react</InlineCode>) or a zero-install 1-line CDN script tag.
               </li>
               <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                No duplicates: Presets are registered once and reused by every
-                route
+                <strong className="text-ink">Interactive npx CLI:</strong> Run <InlineCode>npx curases handy</InlineCode> in any terminal to automatically inspect your project, install packages, and inject components.
               </li>
               <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Server authority: Agent changes to size, speed, or color take
-                precedence on reload
+                <strong className="text-ink">Multi-State Detection:</strong> Automatically morphs cursor states on interactive elements: hover, click, drag, typing, and not-allowed.
+              </li>
+              <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
+                <strong className="text-ink">Roughness & Boil Animation:</strong> Real-time procedural SVG sketch jitter and hand-drawn line boiling physics.
               </li>
             </ul>
-
-            <div className="my-4 border-l-[1.6px] border-l-[#D8D8D8] px-4 py-3">
-              <p className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Using Claude Code? The optional <InlineCode>/curases</InlineCode>{" "}
-                skill can set up the React component for you. Install it with{" "}
-                <InlineCode>npx curases add /curases/integration</InlineCode>,
-                then run <InlineCode>/curases</InlineCode> in Claude Code.
-              </p>
-            </div>
           </section>
 
           <section className="mt-4 text-xs leading-4">
-            <PlainHeading>Requirements</PlainHeading>
+            <PlainHeading>Requirements & Compatibility</PlainHeading>
 
             <ul className="mt-3 flex flex-col gap-1 pl-4">
               <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Node.js 24 LTS+: Runs the MCP server and the verify command
+                Framework support: React 18 & 19, Next.js (App & Pages Router), Vite, Astro, Vue, and plain HTML
               </li>
               <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Framework agnostic: Works with React, Next.js, and plain HTML
+                No-code tools: Fully compatible with Webflow, Framer, Shopify, WordPress, and Squarespace
               </li>
               <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Client-side only: Requires DOM access for pointer tracking
+                Ultra-lightweight footprint: The npm package is only ~11 KB and introduces 0 external runtime dependencies
               </li>
               <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Zero dependencies: No runtime deps beyond the engine script
+                SSR safe: Zero hydration warnings or DOM mismatches in Next.js
               </li>
             </ul>
           </section>
 
           <section className="mt-4">
             <RuleHeading className="font-body font-[550]">
-              Customize your setup
+              Configuration & Props Reference
             </RuleHeading>
 
-            <p className="mt-3 font-body text-[14px] leading-[22px] font-[450] tracking-[-0.08px] text-body">
-              The{" "}
-              <a
-                href="/api/registry"
-                target="_blank"
-                rel="noreferrer"
-                className="text-link transition-colors hover:underline"
-              >
-                API reference
-              </a>{" "}
-              covers every prop and callback, including cursor presets, size,
-              speed, color, state overrides, and integrations with the floating
-              control bar.
-            </p>
-          </section>
-
-          <section className="mt-4">
-            <PlainHeading>Security notes</PlainHeading>
-
-            <p className="mt-3 font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-              Curases runs in your browser and reads pointer and DOM events to
-              render the cursor. By default, it does not send data anywhere.
-              Everything stays local until you copy a preset or prompt.
-            </p>
-
-            <ul className="mt-3 flex flex-col gap-1 pl-4">
-              <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                No external requests: all processing is client-side by default
-              </li>
-              <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Your configured endpoint: cursor presets are served from the
-                path you choose. Use a localhost endpoint for a local workflow
-              </li>
-              <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Optional integrations: configured webhooks and callbacks can
-                send cursor telemetry to other services
-              </li>
-              <li className="font-body text-[13px] leading-5 font-[450] tracking-[-0.08px] text-muted">
-                Dev-only: use the <InlineCode>NODE_ENV</InlineCode> check to
-                exclude from production
-              </li>
-            </ul>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-body text-[13px] leading-5 text-muted">
+                <thead>
+                  <tr className="border-b border-line text-ink">
+                    <th className="py-2 pr-4 font-semibold">Prop / Attribute</th>
+                    <th className="py-2 pr-4 font-semibold">Type</th>
+                    <th className="py-2 pr-4 font-semibold">Default</th>
+                    <th className="py-2 font-semibold">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/60">
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-xs text-ink">cursor</td>
+                    <td className="py-2 pr-4 font-mono text-xs">string</td>
+                    <td className="py-2 pr-4 font-mono text-xs">&quot;Handy&quot;</td>
+                    <td className="py-2">Cursor preset name from the catalog</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-xs text-ink">size</td>
+                    <td className="py-2 pr-4 font-mono text-xs">number</td>
+                    <td className="py-2 pr-4 font-mono text-xs">1.5</td>
+                    <td className="py-2">Scale multiplier (1 = 32px base size)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-xs text-ink">speed</td>
+                    <td className="py-2 pr-4 font-mono text-xs">number</td>
+                    <td className="py-2 pr-4 font-mono text-xs">1</td>
+                    <td className="py-2">Lerp smoothing factor (1 = instant 1:1 hardware)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-xs text-ink">color</td>
+                    <td className="py-2 pr-4 font-mono text-xs">string</td>
+                    <td className="py-2 pr-4 font-mono text-xs">&quot;&quot;</td>
+                    <td className="py-2">Hex color override (empty string keeps natural SVG)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </section>
         </main>
       </div>
@@ -578,7 +546,7 @@ export default function Home() {
             aria-expanded={isColorPickerOpen}
             aria-label="Choose cursor color"
             title="Choose cursor color"
-            className="size-[38px] shrink-0 rounded-xl transition-transform hover:scale-105 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px]"
+            className="size-[38px] shrink-0 rounded-xl transition-transform hover:scale-105 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] cursor-pointer"
             style={{ backgroundColor: selectedColor || "#000000" }}
           />
 
@@ -595,7 +563,7 @@ export default function Home() {
                     }}
                     title={preset.name}
                     aria-label={`Use ${preset.name}`}
-                    className={`size-7 rounded-lg transition-transform hover:scale-110 [outline:1px_solid_#00000014] ${
+                    className={`size-7 rounded-lg transition-transform hover:scale-110 [outline:1px_solid_#00000014] cursor-pointer ${
                       selectedColor === preset.hex
                         ? "[outline:2px_solid_#222222] [outline-offset:1px]"
                         : ""
@@ -657,13 +625,15 @@ export default function Home() {
           <input
             type="number"
             min="0"
-            max="2"
-            step="0.1"
+            max="3"
+            step="0.5"
             value={roughnessVal}
             onChange={(e) =>
-              setRoughnessVal(Math.min(2, Math.max(0, Number(e.target.value) || 0)))
+              setRoughnessVal(
+                Math.min(3, Math.max(0, Number(e.target.value) || 0)),
+              )
             }
-            aria-label="Cursor path roughness"
+            aria-label="Cursor edge roughness"
             className="w-7 bg-transparent text-center font-sans text-[13px] leading-[160%] font-medium text-muted outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="hidden font-sans text-[13px] leading-[165%] font-medium text-muted lg:inline">
@@ -703,7 +673,7 @@ export default function Home() {
             onClick={() =>
               copyToClipboard(agentPrompt, setCopiedFloatingPrompt)
             }
-            className="min-w-[72px] py-2 pr-1 pl-2 text-left font-sans text-[13px] leading-[160%] font-medium text-muted transition-colors hover:text-ink lg:min-w-[78px] lg:pr-2 lg:pl-3.5"
+            className="min-w-[72px] py-2 pr-1 pl-2 text-left font-sans text-[13px] leading-[160%] font-medium text-muted transition-colors hover:text-ink lg:min-w-[78px] lg:pr-2 lg:pl-3.5 cursor-pointer"
           >
             {copiedFloatingPrompt ? "Copied" : "Copy prompt"}
           </button>
@@ -715,7 +685,7 @@ export default function Home() {
               aria-expanded={isCopyMenuOpen}
               aria-label="More copy formats"
               title="More copy formats"
-              className="flex items-center py-2 pr-2 pl-1 text-muted opacity-55 transition-opacity hover:opacity-100 lg:pr-3.5"
+              className="flex items-center py-2 pr-2 pl-1 text-muted opacity-55 transition-opacity hover:opacity-100 lg:pr-3.5 cursor-pointer"
             >
               <ChevronDown className="size-[18px]" strokeWidth={1.5} />
             </button>
@@ -728,7 +698,7 @@ export default function Home() {
                     copyToClipboard(agentPrompt, setCopiedFloatingPrompt);
                     setIsCopyMenuOpen(false);
                   }}
-                  className="w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface"
+                  className="w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface cursor-pointer"
                 >
                   <span className="block font-body text-[12px] font-medium text-ink">
                     Copy agent prompt
@@ -744,7 +714,7 @@ export default function Home() {
                     copyToClipboard(scriptTag, setCopiedFloatingPrompt);
                     setIsCopyMenuOpen(false);
                   }}
-                  className="w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface"
+                  className="w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface cursor-pointer"
                 >
                   <span className="block font-body text-[12px] font-medium text-ink">
                     Copy CDN script
@@ -760,7 +730,7 @@ export default function Home() {
                     copyToClipboard(componentTag, setCopiedFloatingPrompt);
                     setIsCopyMenuOpen(false);
                   }}
-                  className="w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface"
+                  className="w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-surface cursor-pointer"
                 >
                   <span className="block font-body text-[12px] font-medium text-ink">
                     Copy React component
