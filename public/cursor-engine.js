@@ -45,7 +45,7 @@
     window.__CURSOR_ASSET_BASE__ ||
     (document.currentScript
       ? new URL(document.currentScript.src).origin
-      : window.location.origin);
+      : "https://curases.com");
 
   console.log("cursor-engine: BASE =", BASE);
 
