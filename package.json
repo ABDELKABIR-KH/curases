@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "engine:build": "node scripts/build-engine.mjs",
+    "engine:build:dev": "node scripts/build-engine.mjs --dev",
+    "prebuild": "npm run engine:build",
     "build:sdk": "cd packages/curases && tsup"
   },
   "dependencies": {
@@ -27,6 +30,7 @@
     "agentation": "^3.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.4.4",
+    "javascript-obfuscator": "^5.10.0",
     "tailwindcss": "^4",
     "tsup": "^8.5.1",
     "typescript": "^5"

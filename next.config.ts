@@ -9,7 +9,12 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  /* config options here */
+  // Cursor packs live outside public/ so they can only be reached through the
+  // origin-gated API route. Make sure server traces include the private data.
+  outputFileTracingIncludes: {
+    "/api/cursors/*": ["./src/data/cursors/**/*"],
+    "/api/registry": ["./public/cursors/manifest.json"],
+  },
   async headers() {
     const corsHeaders = [
       { key: "Access-Control-Allow-Origin", value: "*" },
@@ -25,19 +30,27 @@ const nextConfig: NextConfig = {
         ? "public, max-age=0, must-revalidate"
         : "no-store, max-age=0";
 
+    const metadataCache = "public, max-age=3600, stale-while-revalidate=86400";
+
     return [
       {
         source: "/(engine.js|cursor-engine.js|llms.txt|llms-full.txt)",
         headers: [...corsHeaders, { key: "Cache-Control", value: engineCache }],
       },
       {
-        source: "/(cursors/:path*|api/:path*)",
+        // Public metadata only. The actual cursor JSON is served by
+        // /api/cursors/* with its own origin-aware CORS headers.
+        source: "/cursors/manifest.json",
         headers: [
           ...corsHeaders,
-          {
-            key: "Cache-Control",
-            value: "public, max-age=3600, stale-while-revalidate=86400",
-          },
+          { key: "Cache-Control", value: metadataCache },
+        ],
+      },
+      {
+        source: "/api/registry",
+        headers: [
+          ...corsHeaders,
+          { key: "Cache-Control", value: metadataCache },
         ],
       },
     ];

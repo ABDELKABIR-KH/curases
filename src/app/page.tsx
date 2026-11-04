@@ -3,7 +3,24 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Copy } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
-import { HANDY_CURSOR } from "@/lib/cursorData";
+
+type CursorAssets = {
+  name?: string;
+  states: Record<string, string>;
+  hotspots?: Record<string, [number, number]>;
+};
+
+const EMPTY_CURSOR_STATES: Record<string, string> = {};
+
+type CursorEngine = NonNullable<Window["Curases"]>;
+
+function getCursorEngine(): CursorEngine | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (
+    window.Curases ??
+    (window as unknown as { CustomCursor?: CursorEngine }).CustomCursor
+  );
+}
 
 type InstallMethod =
   | "npx (Recommended)"
@@ -141,6 +158,7 @@ export default function Home() {
   const [selectedMethod, setSelectedMethod] = useState<InstallMethod>("npx (Recommended)");
   const [isMethodMenuOpen, setIsMethodMenuOpen] = useState(false);
   const [activeCursorState, setActiveCursorState] = useState("normal");
+  const [cursorAssets, setCursorAssets] = useState<CursorAssets | null>(null);
 
   // Floating bar controls
   const [sizeVal, setSizeVal] = useState(1);
@@ -189,10 +207,34 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Cursor packs live behind an origin-checked API instead of the public bundle.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/cursors/handy.json", {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Cursor request failed: ${response.status}`);
+        return response.json() as Promise<CursorAssets>;
+      })
+      .then((data) => {
+        if (data && typeof data.states === "object") {
+          setCursorAssets(data);
+        }
+      })
+      .catch(() => {
+        // Keep the empty preview if the pack cannot be loaded.
+      });
+
+    return () => controller.abort();
+  }, []);
+
   // Keep the live cursor engine in sync with the floating controls.
   useEffect(() => {
     const apply = () => {
-      const engine = (window.Curases || window.CustomCursor) as any;
+      const engine = getCursorEngine();
       if (!engine) return false;
 
       engine.setSize(sizeVal);
@@ -249,7 +291,7 @@ export default function Home() {
   
   const handleStateClick = (stateId: string) => {
     setActiveCursorState(stateId);
-    ((window.Curases || window.CustomCursor) as any)?.state(stateId);
+    getCursorEngine()?.state(stateId);
   };
 
   const toggleBoil = () => {
@@ -316,9 +358,9 @@ export default function Home() {
 
             <div className="w-full">
               <PreviewCard
-                cursorName={HANDY_CURSOR.name}
-                cursorStates={HANDY_CURSOR.states as unknown as Record<string, string>}
-                hotspots={HANDY_CURSOR.hotspots as unknown as Record<string, [number, number]>}
+                cursorName={cursorAssets?.name ?? "Handy"}
+                cursorStates={cursorAssets?.states ?? EMPTY_CURSOR_STATES}
+                hotspots={cursorAssets?.hotspots}
                 activeState={activeCursorState}
                 onStateChange={handleStateClick}
                 size={sizeVal}

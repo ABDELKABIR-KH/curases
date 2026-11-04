@@ -190,11 +190,13 @@ Response:
       "id": "Handy",
       "name": "Handy Cursor",
       "description": "Expressive hand-drawn multi-state cursor with precision responsive transformations.",
-      "previewUrl": "https://curases.com/cursors/handy.json"
+      "previewUrl": "https://curases.com/api/cursors/handy.json"
     }
   ]
 }
 ```
+
+> **Asset gating:** Cursor JSON is served from `https://curases.com/api/cursors/{file}` and is protected by an origin allow-list. The manifest is public metadata, but the SVG datasets are only returned to approved origins. Add customer domains with the server-side `CURASES_ALLOWED_ORIGINS` environment variable (comma-separated full origins). Direct browser navigation to cursor asset URLs is rejected.
 
 ---
 
