@@ -40,7 +40,7 @@
   "homepage": "https://curases.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ABDELKABIR-KH/curases.git"
+    "url": "git+https://github.com/ABDELKABIR-KH/curases.git"
   },
   "peerDependencies": {
     "react": ">=16.8.0",
