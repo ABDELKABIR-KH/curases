@@ -6,21 +6,29 @@ Live demo & catalog: [curases.com](https://curases.com)
 
 ---
 
-## Installation
+## ⚡ Instant Setup with `npx` (Recommended)
+
+Run this command inside any Next.js, React, Vite, or HTML project:
 
 ```bash
-npm install curases
-# or
-yarn add curases
-# or
-pnpm add curases
-# or
-bun add curases
+npx curases handy
+# or pick from the interactive menu:
+npx curases
 ```
+
+The CLI automatically:
+1. Detects your framework (Next.js App Router, Pages Router, Vite, or static HTML).
+2. Installs the `curases` package via your preferred package manager (npm, pnpm, yarn, or bun).
+3. Injects `<Curases cursor="Handy" />` into your layout file or HTML header.
 
 ---
 
-## Usage
+## Manual Installation
+
+```bash
+npm install curases
+# or yarn add curases / pnpm add curases / bun add curases
+```
 
 ### Next.js (App Router) & React
 
@@ -75,7 +83,7 @@ curases.destroy();
 
 ---
 
-## Alternative: Zero-Install CDN Script Tag
+## Zero-Install CDN Script Tag
 
 For Webflow, Shopify, Framer, or static HTML sites without npm:
 

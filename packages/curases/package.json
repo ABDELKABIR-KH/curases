@@ -1,6 +1,6 @@
 {
   "name": "curases",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Dynamic hardware-accelerated custom cursor library for the web, React, and Next.js",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -53,5 +53,8 @@
     "react-dom": {
       "optional": true
     }
+  },
+  "bin": {
+    "curases": "./dist/cli.js"
   }
 }
