@@ -18,7 +18,7 @@
   <a href="https://curases.com"><strong>Curases</strong></a> is a zero-dependency, ultra-lightweight custom cursor engine designed for modern web applications and AI coding agents.
 </p>
 
-## Quickstart
+## Install
 
 ### npm
 
