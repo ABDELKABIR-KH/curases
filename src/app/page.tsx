@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Check, ChevronDown, Copy } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
 
@@ -73,13 +79,24 @@ const INSTALL_CONFIGS: Record<InstallMethod, InstallConfig> = {
 };
 
 const COLOR_PRESETS = [
-  { name: "Natural / Black", hex: "" },
-  { name: "Electric Blue", hex: "#2563eb" },
-  { name: "Neon Cyan", hex: "#06b6d4" },
-  { name: "Purple Dream", hex: "#9333ea" },
-  { name: "Emerald Green", hex: "#10b981" },
-  { name: "Solar Orange", hex: "#f97316" },
-  { name: "Crimson Red", hex: "#ef4444" },
+  {
+    name: "Natural / Black",
+    hex: "",
+    swatch: "#000000",
+    arc: "left-[-48px] top-[7px] max-lg:left-[6px] max-lg:top-[-46px]",
+  },
+  {
+    name: "Deep Blue",
+    hex: "#1B4962",
+    swatch: "#1B4962",
+    arc: "left-[-35px] top-[-34px] max-lg:left-[34px] max-lg:top-[-36px]",
+  },
+  {
+    name: "Oxblood",
+    hex: "#85261D",
+    swatch: "#85261D",
+    arc: "left-[8px] top-[-42px] max-lg:left-[52px] max-lg:top-[-10px]",
+  },
 ];
 
 function RuleHeading({
@@ -203,8 +220,20 @@ export default function Home() {
       }
     }
 
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setIsColorPickerOpen(false);
+        setIsMethodMenuOpen(false);
+        setIsCopyMenuOpen(false);
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   // Cursor packs live behind an origin-checked API instead of the public bundle.
@@ -580,21 +609,61 @@ export default function Home() {
         aria-label="Cursor controls"
         className="fixed bottom-[21px] left-1/2 z-50 flex w-max max-w-[calc(100vw-24px)] -translate-x-1/2 items-center justify-center gap-[6px] rounded-2xl bg-surface px-2 py-2 [outline:0.8px_solid_#0000000A] lg:gap-[10px]"
       >
-        <div className="relative flex h-[42px] w-[38px] shrink-0 items-center justify-center" ref={colorDropdownRef}>
+        <div
+          className={`relative flex h-[42px] shrink-0 items-center justify-center transition-[width] duration-300 ${
+            isColorPickerOpen ? "w-[38px]" : "w-[38px] lg:w-[62px]"
+          }`}
+          ref={colorDropdownRef}
+        >
           <button
             type="button"
             onClick={() => setIsColorPickerOpen((open) => !open)}
             aria-expanded={isColorPickerOpen}
-            aria-label="Choose cursor color"
+            aria-label={
+              isColorPickerOpen ? "Close cursor color picker" : "Choose cursor color"
+            }
             title="Choose cursor color"
-            className="size-[38px] shrink-0 rounded-xl transition-transform hover:scale-105 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] cursor-pointer"
-            style={{ backgroundColor: selectedColor || "#000000" }}
-          />
+            className={`relative h-[38px] shrink-0 cursor-pointer transition-[width] duration-300 ${
+              isColorPickerOpen ? "w-[38px]" : "w-[38px] lg:w-[62px]"
+            }`}
+          >
+            {COLOR_PRESETS.map((preset, index) => {
+              const isActive = selectedColor === preset.hex;
+              const chipStyle = {
+                "--chip-left": isColorPickerOpen
+                  ? "0px"
+                  : `${index * 10}px`,
+                zIndex: isActive ? 40 : COLOR_PRESETS.length - index,
+                backgroundColor: preset.swatch,
+              } as CSSProperties;
+
+              return (
+                <span
+                  key={preset.name}
+                  aria-hidden="true"
+                  className={`absolute top-0 left-0 size-[38px] rounded-xl ease-out [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] transition-all duration-300 lg:left-[var(--chip-left)] ${
+                    !isActive && !isColorPickerOpen ? "max-lg:hidden" : ""
+                  } ${
+                    isColorPickerOpen && !isActive
+                      ? "scale-75 opacity-0"
+                      : "scale-100 opacity-100"
+                  }`}
+                  style={chipStyle}
+                />
+              );
+            })}
+          </button>
 
           {isColorPickerOpen && (
-            <div className="absolute bottom-full left-0 z-50 mb-3 w-44 rounded-xl border border-border bg-white p-2 shadow-lg">
-              <div className="grid grid-cols-4 gap-1.5">
-                {COLOR_PRESETS.map((preset) => (
+            <div
+              role="group"
+              className="absolute top-0 left-0 z-50 size-[38px]"
+              aria-label="Cursor color presets"
+            >
+              {COLOR_PRESETS.map((preset, index) => {
+                const isActive = selectedColor === preset.hex;
+
+                return (
                   <button
                     key={preset.name}
                     type="button"
@@ -604,15 +673,19 @@ export default function Home() {
                     }}
                     title={preset.name}
                     aria-label={`Use ${preset.name}`}
-                    className={`size-7 rounded-lg transition-transform hover:scale-110 [outline:1px_solid_#00000014] cursor-pointer ${
-                      selectedColor === preset.hex
+                    aria-pressed={isActive}
+                    className={`absolute size-[27px] cursor-pointer rounded-[8px] transition-transform duration-200 hover:scale-110 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] ${preset.arc} ${
+                      isActive
                         ? "[outline:2px_solid_#222222] [outline-offset:1px]"
                         : ""
                     }`}
-                    style={{ backgroundColor: preset.hex || "#000000" }}
+                    style={{
+                      backgroundColor: preset.swatch,
+                      zIndex: COLOR_PRESETS.length - index,
+                    }}
                   />
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
         </div>
