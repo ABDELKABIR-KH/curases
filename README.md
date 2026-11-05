@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center">
+<p align="start">
   <a href="https://www.npmjs.com/package/curases">
     <img src="https://img.shields.io/npm/v/curases?style=flat-square&color=2563eb" alt="npm version">
   </a>
@@ -14,7 +14,7 @@
   </a>
 </p>
 
-<p align="center">
+<p align="start">
   <a href="https://curases.com"><strong>Curases</strong></a> is a zero-dependency, ultra-lightweight custom cursor engine designed for modern web applications and AI coding agents.
 </p>
 
