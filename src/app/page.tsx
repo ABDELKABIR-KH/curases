@@ -442,7 +442,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white pb-32 font-sans text-ink sm:pb-36">
-      <div className="mx-auto flex w-full max-w-[576px] flex-col gap-6 px-6 pt-[50px] pb-12">
+      <div className="mx-auto flex w-full max-w-[576px] flex-col gap-6 px-6 pt-[50px]">
         <header className="flex h-fit items-center justify-between gap-4">
           <nav className="flex items-center gap-4" aria-label="Primary">
             <a
@@ -475,7 +475,7 @@ export default function Home() {
             </a>
           </nav>
           <div className="flex items-center gap-3">
-            <span className="font-body text-[10px] leading-3 font-[450] text-faint underline decoration-dotted underline-offset-2">
+            <span className="font-body text-[11px] leading-4 font-[450] text-[#00000033] underline decoration-dotted decoration-[#00000033] underline-offset-2">
               v0.2.0
             </span>
             <a
@@ -484,9 +484,9 @@ export default function Home() {
               rel="noreferrer"
               aria-label="View Curases on GitHub"
               title="View Curases on GitHub"
-              className="flex size-[26px] shrink-0 items-center justify-center rounded-lg bg-[#00000005] text-muted transition-colors [outline:0.8px_solid_#00000012] hover:bg-surface hover:text-ink"
+              className="inline-flex size-3 shrink-0 items-center justify-center text-[#00000033] transition-colors hover:text-ink"
             >
-              <GitHubIcon className="size-[14px]" />
+              <GitHubIcon className="size-3" />
             </a>
           </div>
         </header>
@@ -723,38 +723,22 @@ export default function Home() {
           </section>
         </main>
 
-        <footer className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t-[0.8px] border-line pt-5">
-          <div className="flex items-baseline gap-2">
-            <span className="font-wordmark text-[13px] leading-[18px] font-semibold text-ink">
-              Curases
-            </span>
-            <span className="font-body text-xs leading-4 text-muted">
-              © 2026
-            </span>
-          </div>
+        <footer className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t-[0.8px] border-[#00000012] pt-5 pb-8">
+          <span className="font-wordmark text-[13px] leading-[18px] font-semibold text-[#666666]">
+            Curases
+          </span>
 
-          <div className="flex items-center gap-4">
-            <span className="font-body text-xs leading-4 text-muted">
-              Made by{" "}
-              <a
-                href="https://github.com/ABDELKABIR-KH"
-                target="_blank"
-                rel="noreferrer"
-                className="text-ink underline decoration-1 underline-offset-2 transition-colors hover:text-black"
-              >
-                Abdelkabir
-              </a>
-            </span>
+          <span className="font-body text-[12px] leading-4 text-[#666666]">
+            Made by{" "}
             <a
-              href="https://github.com/ABDELKABIR-KH/curases"
+              href="https://github.com/ABDELKABIR-KH"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 font-body text-xs leading-4 text-ink transition-colors hover:text-black"
+              className="underline decoration-1 underline-offset-2 transition-colors hover:text-ink"
             >
-              <GitHubIcon className="size-[13px]" />
-              GitHub
+              Abdelkabir
             </a>
-          </div>
+          </span>
         </footer>
       </div>
 
