@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Nunito_Sans, Playpen_Sans } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const nunito = Nunito_Sans({
@@ -68,6 +69,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-white font-sans text-ink">
         {children}
+        <Analytics />
       </body>
     </html>
   );
