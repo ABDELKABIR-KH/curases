@@ -519,8 +519,8 @@ export default function PreviewCard({
           type="button"
           onClick={onReset}
           className="preview-reset-btn"
-          title="Reset state to normal"
-          aria-label="Reset state to normal"
+          title="Reset cursor settings"
+          aria-label="Reset cursor settings"
         >
           <RotateCcw className="size-3.5" />
         </button>

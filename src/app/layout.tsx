@@ -22,7 +22,7 @@ const playpen = Playpen_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Curases — The Agentic Custom Cursor Engine for the Web",
+  title: "Curases",
   description:
     "Zero-dependency custom cursor engine with instant AI agent prompts, CDN script delivery, and multi-state SVG presets for any web stack.",
   keywords: [
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Curases" }],
   openGraph: {
-    title: "Curases — The Agentic Custom Cursor Engine for the Web",
+    title: "Curases",
     description:
       "Zero-dependency custom cursor engine with instant AI agent prompts, CDN script delivery, and multi-state SVG presets for any web stack.",
     url: "https://curases.com",

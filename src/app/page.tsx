@@ -7,7 +7,8 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Check, ChevronDown, Copy } from "lucide-react";
+import { Check, ChevronDown, Copy, RotateCcw } from "lucide-react";
+import { motion, useSpring, useTransform } from "framer-motion";
 import PreviewCard from "@/components/PreviewCard";
 
 type CursorAssets = {
@@ -79,25 +80,114 @@ const INSTALL_CONFIGS: Record<InstallMethod, InstallConfig> = {
 };
 
 const COLOR_PRESETS = [
-  {
-    name: "Natural / Black",
-    hex: "",
-    swatch: "#000000",
-    arc: "left-[-48px] top-[7px] max-lg:left-[6px] max-lg:top-[-46px]",
-  },
-  {
-    name: "Deep Blue",
-    hex: "#1B4962",
-    swatch: "#1B4962",
-    arc: "left-[-35px] top-[-34px] max-lg:left-[34px] max-lg:top-[-36px]",
-  },
-  {
-    name: "Oxblood",
-    hex: "#85261D",
-    swatch: "#85261D",
-    arc: "left-[8px] top-[-42px] max-lg:left-[52px] max-lg:top-[-10px]",
-  },
+  { name: "Natural / Black", hex: "", swatch: "#000000" },
+  { name: "Deep Blue", hex: "#1B4962", swatch: "#1B4962" },
+  { name: "Oxblood", hex: "#85261D", swatch: "#85261D" },
 ];
+
+// The fan is one arc struck from the dock's top-left rounded corner:
+// its center is the corner-radius center, its angle step is constant,
+// and only the spring-driven radius changes.
+const FAN_SWATCH = 27;
+const DOCK_PADDING = 8;
+const DOCK_CORNER_RADIUS = 16;
+const FAN_ORIGIN = DOCK_CORNER_RADIUS - DOCK_PADDING;
+const FAN_AIR = 13;
+const FAN_RADIUS = DOCK_CORNER_RADIUS + FAN_AIR + FAN_SWATCH / 2;
+const FAN_CENTER_ANGLE = 132;
+const FAN_ARC = 124;
+const COMPACT_FAN_RADIUS = 34;
+const COMPACT_FAN_TOP = 4;
+const COMPACT_ANGLE_STEP = 43;
+
+function fanAngle(index: number, total: number, compact: boolean) {
+  if (compact) {
+    // Phone docks sit near the screen edge, so the origin moves up and
+    // the radius shortens; the angular step stays constant.
+    return 90 + COMPACT_ANGLE_STEP * ((total - 1) / 2 - index);
+  }
+
+  const step = total > 1 ? FAN_ARC / (total - 1) : 0;
+
+  return FAN_CENTER_ANGLE + FAN_ARC / 2 - step * index;
+}
+
+function useMinWidth(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const update = () => setMatches(mql.matches);
+
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, [query]);
+
+  return matches;
+}
+
+function ArcSwatch({
+  preset,
+  index,
+  total,
+  open,
+  compact,
+  selected,
+  onSelect,
+}: {
+  preset: (typeof COLOR_PRESETS)[number];
+  index: number;
+  total: number;
+  open: boolean;
+  compact: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const radius = compact ? COMPACT_FAN_RADIUS : FAN_RADIUS;
+  const angle = (fanAngle(index, total, compact) * Math.PI) / 180;
+  const progress = useSpring(0, { stiffness: 180, damping: 22, mass: 0.9 });
+
+  useEffect(() => {
+    progress.set(open ? 1 : 0);
+  }, [open, progress]);
+
+  const x = useTransform(progress, (value) => Math.cos(angle) * radius * value);
+  const y = useTransform(progress, (value) => -Math.sin(angle) * radius * value);
+  const scale = useTransform(progress, (value) => 0.35 + 0.65 * Math.min(value, 1));
+  const opacity = useTransform(progress, (value) => Math.min(value, 1));
+
+  return (
+    <motion.div
+      className="absolute top-0 left-0"
+      style={{
+        width: FAN_SWATCH,
+        height: FAN_SWATCH,
+        marginTop: -FAN_SWATCH / 2,
+        marginLeft: -FAN_SWATCH / 2,
+        x,
+        y,
+        scale,
+        opacity,
+        pointerEvents: open ? "auto" : "none",
+        zIndex: selected ? total + 1 : total - index,
+      }}
+    >
+      <button
+        type="button"
+        onClick={onSelect}
+        tabIndex={open ? 0 : -1}
+        title={preset.name}
+        aria-label={`Use ${preset.name}`}
+        aria-pressed={selected}
+        className={`block size-full cursor-pointer rounded-[8px] transition-transform duration-200 hover:scale-110 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] ${
+          selected ? "[outline:2px_solid_#222222] [outline-offset:1px]" : ""
+        }`}
+        style={{ backgroundColor: preset.swatch }}
+      />
+    </motion.div>
+  );
+}
 
 function RuleHeading({
   children,
@@ -186,6 +276,7 @@ export default function Home() {
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [isCopyMenuOpen, setIsCopyMenuOpen] = useState(false);
   const lastBoilRef = useRef(0.3);
+  const compactFan = !useMinWidth("(min-width: 1024px)");
 
   // Copy feedback
   const [copiedStep1, setCopiedStep1] = useState(false);
@@ -197,6 +288,10 @@ export default function Home() {
   const copyDropdownRef = useRef<HTMLDivElement>(null);
 
   const activeMethod = INSTALL_CONFIGS[selectedMethod];
+  const activeColorIndex = Math.max(
+    0,
+    COLOR_PRESETS.findIndex((preset) => preset.hex === selectedColor),
+  );
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -333,6 +428,17 @@ export default function Home() {
     });
   };
 
+  const resetCursorSettings = () => {
+    setSizeVal(1);
+    setSpeedVal(1);
+    setSelectedColor("");
+    setRoughnessVal(0);
+    setBoilVal(0.3);
+    lastBoilRef.current = 0.3;
+    setIsColorPickerOpen(false);
+    handleStateClick("normal");
+  };
+
   return (
     <div className="min-h-screen bg-white pb-32 font-sans text-ink sm:pb-36">
       <div className="mx-auto flex w-full max-w-[576px] flex-col gap-6 px-6 pt-[50px] pb-12">
@@ -397,7 +503,7 @@ export default function Home() {
                 color={selectedColor}
                 roughness={roughnessVal}
                 boil={boilVal}
-                onReset={() => handleStateClick("normal")}
+                onReset={resetCursorSettings}
                 onToggleBoil={toggleBoil}
               />
             </div>
@@ -633,7 +739,9 @@ export default function Home() {
                 "--chip-left": isColorPickerOpen
                   ? "0px"
                   : `${index * 10}px`,
-                zIndex: isActive ? 40 : COLOR_PRESETS.length - index,
+                zIndex: isActive
+                  ? 40
+                  : COLOR_PRESETS.length - Math.abs(index - activeColorIndex),
                 backgroundColor: preset.swatch,
               } as CSSProperties;
 
@@ -654,40 +762,33 @@ export default function Home() {
             })}
           </button>
 
-          {isColorPickerOpen && (
-            <div
-              role="group"
-              className="absolute top-0 left-0 z-50 size-[38px]"
-              aria-label="Cursor color presets"
-            >
-              {COLOR_PRESETS.map((preset, index) => {
-                const isActive = selectedColor === preset.hex;
-
-                return (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => {
-                      setSelectedColor(preset.hex);
-                      setIsColorPickerOpen(false);
-                    }}
-                    title={preset.name}
-                    aria-label={`Use ${preset.name}`}
-                    aria-pressed={isActive}
-                    className={`absolute size-[27px] cursor-pointer rounded-[8px] transition-transform duration-200 hover:scale-110 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] ${preset.arc} ${
-                      isActive
-                        ? "[outline:2px_solid_#222222] [outline-offset:1px]"
-                        : ""
-                    }`}
-                    style={{
-                      backgroundColor: preset.swatch,
-                      zIndex: COLOR_PRESETS.length - index,
-                    }}
-                  />
-                );
-              })}
-            </div>
-          )}
+          <div
+            role="group"
+            aria-label="Cursor color presets"
+            aria-hidden={!isColorPickerOpen}
+            className="pointer-events-none absolute z-50 size-0"
+            style={{
+              left: compactFan ? "auto" : FAN_ORIGIN,
+              right: compactFan ? 0 : "auto",
+              top: compactFan ? COMPACT_FAN_TOP : FAN_ORIGIN,
+            }}
+          >
+            {COLOR_PRESETS.map((preset, index) => (
+              <ArcSwatch
+                key={preset.name}
+                preset={preset}
+                index={index}
+                total={COLOR_PRESETS.length}
+                open={isColorPickerOpen}
+                compact={compactFan}
+                selected={selectedColor === preset.hex}
+                onSelect={() => {
+                  setSelectedColor(preset.hex);
+                  setIsColorPickerOpen(false);
+                }}
+              />
+            ))}
+          </div>
         </div>
 
         <span className="h-[30px] w-px shrink-0 bg-line" />
@@ -775,6 +876,19 @@ export default function Home() {
             {boilVal === 0 ? "OFF" : "X"}
           </span>
         </div>
+
+        <button
+          type="button"
+          onClick={resetCursorSettings}
+          aria-label="Reset cursor settings"
+          title="Reset cursor settings"
+          className="hidden h-[38px] shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-control px-2 text-muted transition-colors [outline:0.8px_solid_#00000005] hover:text-ink sm:flex lg:gap-2 lg:px-3.5"
+        >
+          <RotateCcw className="size-[18px]" strokeWidth={1.5} />
+          <span className="hidden font-sans text-[13px] leading-[160%] font-medium lg:inline">
+            Reset
+          </span>
+        </button>
 
         <span className="h-[30px] w-px shrink-0 bg-line" />
 
