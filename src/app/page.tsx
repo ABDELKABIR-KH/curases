@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Check, ChevronDown, Copy, RotateCcw } from "lucide-react";
 import { motion, useSpring, useTransform } from "framer-motion";
+import GitHubIcon from "@/components/GitHubIcon";
 import PreviewCard from "@/components/PreviewCard";
 
 type CursorAssets = {
@@ -443,7 +444,7 @@ export default function Home() {
     <div className="min-h-screen bg-white pb-32 font-sans text-ink sm:pb-36">
       <div className="mx-auto flex w-full max-w-[576px] flex-col gap-6 px-6 pt-[50px] pb-12">
         <header className="flex h-fit items-center justify-between gap-4">
-          <nav className="flex items-start gap-4" aria-label="Primary">
+          <nav className="flex items-center gap-4" aria-label="Primary">
             <a
               href="#overview"
               className="text-[12px] leading-[150%] font-semibold text-ink transition-colors hover:text-black"
@@ -473,9 +474,21 @@ export default function Home() {
               Docs
             </a>
           </nav>
-          <span className="font-body text-[10px] leading-3 font-[450] text-faint underline decoration-dotted underline-offset-2">
-            v0.2.0
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="font-body text-[10px] leading-3 font-[450] text-faint underline decoration-dotted underline-offset-2">
+              v0.2.0
+            </span>
+            <a
+              href="https://github.com/ABDELKABIR-KH/curases"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="View Curases on GitHub"
+              title="View Curases on GitHub"
+              className="flex size-[26px] shrink-0 items-center justify-center rounded-lg bg-[#00000005] text-muted transition-colors [outline:0.8px_solid_#00000012] hover:bg-surface hover:text-ink"
+            >
+              <GitHubIcon className="size-[14px]" />
+            </a>
+          </div>
         </header>
 
         <main className="flex flex-col gap-6">
@@ -709,6 +722,40 @@ export default function Home() {
             </div>
           </section>
         </main>
+
+        <footer className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t-[0.8px] border-line pt-5">
+          <div className="flex items-baseline gap-2">
+            <span className="font-wordmark text-[13px] leading-[18px] font-semibold text-ink">
+              Curases
+            </span>
+            <span className="font-body text-xs leading-4 text-muted">
+              © 2026
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="font-body text-xs leading-4 text-muted">
+              Made by{" "}
+              <a
+                href="https://github.com/ABDELKABIR-KH"
+                target="_blank"
+                rel="noreferrer"
+                className="text-ink underline decoration-1 underline-offset-2 transition-colors hover:text-black"
+              >
+                Abdelkabir
+              </a>
+            </span>
+            <a
+              href="https://github.com/ABDELKABIR-KH/curases"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 font-body text-xs leading-4 text-ink transition-colors hover:text-black"
+            >
+              <GitHubIcon className="size-[13px]" />
+              GitHub
+            </a>
+          </div>
+        </footer>
       </div>
 
       <aside
