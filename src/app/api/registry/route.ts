@@ -19,7 +19,7 @@ export async function GET() {
       return {
         ...cursor,
         description,
-        fileUrl: `/cursors/${cursor.file}`,
+        fileUrl: `/api/cursors/${cursor.file}`,
         agentPrompt: `Install Curases cursor engine in this project using the '${cursor.id}' style. Set data-cursor="${cursor.id}", data-size="1.0", and data-speed="1.0". Reference docs: https://curases.com/llms.txt.`,
         cdnScript: `<script src="https://curases.com/engine.js" data-cursor="${cursor.id}" data-size="1.0" data-speed="1.0" defer></script>`,
       };
@@ -29,11 +29,13 @@ export async function GET() {
       name: "Curases Registry",
       version: "1.0.0",
       engineUrl: "https://curases.com/engine.js",
+      manifestUrl: "https://curases.com/cursors/manifest.json",
+      assetApiUrl: "https://curases.com/api/cursors",
       llmsTxt: "https://curases.com/llms.txt",
       llmsFullTxt: "https://curases.com/llms-full.txt",
       cursors: cursorsWithMeta,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to read registry" }, { status: 500 });
   }
 }

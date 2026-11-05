@@ -1,0 +1,60 @@
+{
+  "name": "curases",
+  "version": "0.2.0",
+  "description": "Dynamic hardware-accelerated custom cursor library for the web, React, and Next.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.mjs",
+      "require": "./dist/react.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "cursor",
+    "custom-cursor",
+    "curases",
+    "react-cursor",
+    "nextjs-cursor",
+    "framer",
+    "ux",
+    "ui"
+  ],
+  "author": "Curases",
+  "license": "MIT",
+  "homepage": "https://curases.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ABDELKABIR-KH/curases.git"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "bin": {
+    "curases": "./dist/cli.js"
+  }
+}

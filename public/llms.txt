@@ -112,3 +112,4 @@ For complete technical schemas, state vectors, and REST endpoints, visit:
 - Full Spec: https://curases.com/llms-full.txt
 - Registry API: https://curases.com/api/registry
 - Cursors Manifest: https://curases.com/cursors/manifest.json
+- Cursor Asset API (origin-gated): https://curases.com/api/cursors/{file}
