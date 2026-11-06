@@ -196,7 +196,7 @@ Response:
 }
 ```
 
-> **Asset gating:** Cursor JSON is served from `https://curases.com/api/cursors/{file}` and is protected by an origin allow-list. The manifest is public metadata, but the SVG datasets are only returned to approved origins. Add customer domains with the server-side `CURASES_ALLOWED_ORIGINS` environment variable (comma-separated full origins). Direct browser navigation to cursor asset URLs is rejected.
+> **Asset delivery:** Cursor JSON is served from `https://curases.com/api/cursors/{file}` with CORS enabled for every origin, so the drop-in script works on any domain. Direct browser navigation to a cursor asset URL is rejected. Operators who need domain gating can opt in by setting `CURASES_ALLOWED_ORIGINS` (comma-separated full origins); this switches the API to an origin allow-list with `Vary: Origin` and private caching.
 
 ---
 

@@ -1,15 +1,21 @@
 import type { NextRequest } from "next/server";
 
 /**
- * Origins that are allowed to read cursor packs from the asset API.
+ * Cursor packs are public UI assets: they are rendered inline as SVG on the
+ * customer's page, so they can always be inspected in devtools. Delivery is
+ * therefore open to every origin by default, which is what makes the
+ * drop-in CDN script work on any domain (Framer, Webflow, custom sites).
  *
- * Add customer domains with the CURASES_ALLOWED_ORIGINS environment variable
- * (comma separated, full origins only):
+ * Strict mode is opt-in. Set CURASES_ALLOWED_ORIGINS to a comma separated
+ * list of full origins, or CURASES_PUBLIC_CDN=false, to restrict who can
+ * read packs:
  *
  *   CURASES_ALLOWED_ORIGINS=https://acme.com,https://app.acme.com
  *
- * Set CURASES_PUBLIC_CDN=true to keep the old public-CDN behaviour and allow
- * every origin. Direct browser navigation is still blocked in that mode.
+ * In strict mode only the configured origins (plus the defaults below) are
+ * served, and responses are origin-reflected and never shared by a CDN.
+ *
+ * Direct browser navigation to a pack is always blocked, in both modes.
  */
 const DEFAULT_ALLOWED_ORIGINS = [
   "https://curases.com",
@@ -32,17 +38,35 @@ function parseOrigin(value: string | null): string | null {
   }
 }
 
-function getAllowedOrigins(): Set<string> {
-  const configured = (process.env.CURASES_ALLOWED_ORIGINS || "")
+function getConfiguredOrigins(): string[] {
+  return (process.env.CURASES_ALLOWED_ORIGINS || "")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
+}
 
-  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
+function getAllowedOrigins(): Set<string> {
+  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...getConfiguredOrigins()]);
 }
 
 function isOriginAllowed(origin: string): boolean {
   return getAllowedOrigins().has(origin);
+}
+
+/**
+ * True unless an operator explicitly opted into strict origin gating.
+ *
+ * CURASES_PUBLIC_CDN=true   -> force public delivery
+ * CURASES_PUBLIC_CDN=false  -> force strict delivery
+ * CURASES_ALLOWED_ORIGINS   -> strict delivery
+ * otherwise                 -> public delivery
+ */
+export function isPublicDelivery(): boolean {
+  if (process.env.CURASES_PUBLIC_CDN === "true") return true;
+
+  if (process.env.CURASES_PUBLIC_CDN === "false") return false;
+
+  return getConfiguredOrigins().length === 0;
 }
 
 /** The Origin header, or the origin of the Referer when Origin is absent. */
@@ -56,16 +80,16 @@ export function getRequestOrigin(request: NextRequest): string | null {
 /**
  * Gate cursor JSON requests.
  *
- * Browsers send Origin/Referer on cross-origin fetches. Same-origin GETs may
- * omit both, but always carry Sec-Fetch-Site. Direct navigation (opening the
- * URL in a tab) is always rejected.
+ * Direct navigation (opening the URL in a tab) is always rejected. In public
+ * mode every other request is served; in strict mode the Origin/Referer must
+ * match the allow-list.
  */
 export function isAllowedAssetRequest(request: NextRequest): boolean {
   const fetchSite = request.headers.get("sec-fetch-site");
 
   if (fetchSite === "none") return false;
 
-  if (process.env.CURASES_PUBLIC_CDN === "true") return true;
+  if (isPublicDelivery()) return true;
 
   const origin = getRequestOrigin(request);
   if (origin) return isOriginAllowed(origin);
@@ -98,17 +122,21 @@ export function getAssetCorsHeaders(
   request: NextRequest
 ): Record<string, string> {
   const headers: Record<string, string> = {
-    Vary: "Origin",
     "Access-Control-Allow-Methods": "GET, OPTIONS, HEAD",
     "Access-Control-Allow-Headers": "Content-Type, X-Curases-Key",
     "Access-Control-Max-Age": "86400",
   };
 
-  const origin = getRequestOrigin(request);
-
-  if (process.env.CURASES_PUBLIC_CDN === "true") {
+  if (isPublicDelivery()) {
+    // One shared, CDN-cacheable response for every origin.
     headers["Access-Control-Allow-Origin"] = "*";
-  } else if (origin && isOriginAllowed(origin)) {
+    return headers;
+  }
+
+  headers.Vary = "Origin";
+
+  const origin = getRequestOrigin(request);
+  if (origin && isOriginAllowed(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
 
@@ -116,6 +144,12 @@ export function getAssetCorsHeaders(
 }
 
 export function getAssetCacheHeaders(): Record<string, string> {
+  if (isPublicDelivery()) {
+    return {
+      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+    };
+  }
+
   // Keep the gate re-evaluated: a cached response must not outlive a domain
   // being removed from the allow-list.
   return {

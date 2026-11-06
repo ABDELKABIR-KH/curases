@@ -45,10 +45,11 @@
       ? new URL(document.currentScript.src).origin
       : "https://curases.com");
 
-  // Cursor packs are served from an origin-gated API. The manifest stays
-  // public so the engine can discover available packs without exposing the
-  // actual SVG datasets.
-  const ASSET_API = `${BASE}/api/cursors`;
+  // Cursor packs are public, CORS-enabled assets. Keep the canonical CDN as a
+  // fallback so a self-hosted, proxied, or stale deployment still renders.
+  const FALLBACK_BASE = "https://www.curases.com";
+  const BASES = BASE === FALLBACK_BASE ? [BASE] : [BASE, FALLBACK_BASE];
+  const ASSET_PATH = "/api/cursors";
   const ASSET_KEY =
     window.__CURSOR_ASSET_KEY__ ||
     (document.currentScript &&
@@ -74,6 +75,10 @@
     boil: 0.3, // 0 = static sketch; 0-1 = frame-to-frame pen flicker
     outline: 0, // 0 = default Figma outline; 0.5 - 3 = outer stroke thickness
   };
+
+  // Deferred until a pack renders so a failed fetch never leaves the page
+  // without any cursor at all.
+  let hideNativeRequested = true;
 
   function clampRoughness(value) {
     return Math.min(2, Math.max(0, parseFloat(value) || 0));
@@ -388,13 +393,47 @@
   // ----------------------------------------------------
   // Load manifest JSON
   // ----------------------------------------------------
-  async function loadManifest() {
-    const url = `${BASE}/cursors/manifest.json`;
-    const res = await fetch(url, { cache: "no-cache", credentials: "omit" });
+  async function fetchJson(url, headers) {
+    const res = await fetch(url, {
+      cache: "no-cache",
+      credentials: "omit",
+      headers: headers || {},
+    });
 
-    if (!res.ok) throw new Error("manifest fetch failed: " + res.status);
+    if (!res.ok) throw new Error("HTTP " + res.status + " for " + url);
 
     return res.json();
+  }
+
+  async function loadManifest() {
+    let lastError = null;
+
+    for (const base of BASES) {
+      try {
+        return await fetchJson(`${base}/cursors/manifest.json`);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error("manifest fetch failed");
+  }
+
+  async function loadPack(entry) {
+    let lastError = null;
+
+    for (const base of BASES) {
+      try {
+        return await fetchJson(
+          `${base}${ASSET_PATH}/${encodeURIComponent(entry.file)}`,
+          assetHeaders()
+        );
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error("cursor fetch failed");
   }
 
   // ----------------------------------------------------
@@ -409,32 +448,46 @@
         manifest.cursors.find((c) => c.id.toLowerCase() === targetId) ||
         manifest.cursors[0];
 
-      if (!entry) {
-        return;
+      if (!entry) throw new Error("manifest contains no cursors");
+
+      const json = await loadPack(entry);
+
+      if (!json || typeof json.states !== "object") {
+        throw new Error("cursor pack is malformed");
       }
-
-      const jsonUrl = `${ASSET_API}/${encodeURIComponent(entry.file)}`;
-      const res = await fetch(jsonUrl, {
-        cache: "no-cache",
-        credentials: "omit",
-        headers: assetHeaders(),
-      });
-
-      if (!res.ok) {
-        throw new Error("cursor fetch failed: " + res.status);
-      }
-
-      const json = await res.json();
 
       activeSet = json;
+
+      // Only hide the native cursor once we can actually replace it.
+      if (hideNativeRequested) injectNativeHideCSS();
+
       updateCursor();
 
       // Only show cursor if we have a valid mouse position (avoid top-left flash)
       if (hasMousePosition && options.visible) {
         cursor.style.display = "block";
       }
-    } catch (_) {
-      // Pack unavailable (offline, or this origin is not allow-listed).
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+
+      // Never leave the page cursor-less. If a pack was never rendered the
+      // native cursor stays (or comes back) visible; if a previous pack is
+      // still on screen, keep it hidden so the two cursors don't stack.
+      if (!activeSet) restoreNativeCursor();
+
+      try {
+        console.warn(
+          `[Curases] Could not load cursor "${id || "default"}": ${detail}`
+        );
+      } catch (_) { /* console unavailable */ }
+
+      try {
+        window.dispatchEvent(
+          new CustomEvent("curases:error", {
+            detail: { id: id || null, error: detail },
+          })
+        );
+      } catch (_) { /* CustomEvent unavailable */ }
     }
   }
 
@@ -669,6 +722,11 @@
     (document.head || document.documentElement).appendChild(style);
   }
 
+  function restoreNativeCursor() {
+    const style = document.getElementById("curases-hide-native");
+    if (style) style.remove();
+  }
+
   function getScriptDataset() {
     const s = document.currentScript;
     if (!s) return {};
@@ -691,7 +749,8 @@
       if (config.color !== undefined) { options.color = config.color || ""; updateCursor(); }
       if (config.roughness !== undefined) { options.roughness = clampRoughness(config.roughness); updateCursor(); }
       if (config.boil !== undefined) { options.boil = clampBoil(config.boil); updateCursor(); }
-      if (config.hideNative !== false) injectNativeHideCSS();
+      hideNativeRequested = config.hideNative !== false;
+      if (!hideNativeRequested) restoreNativeCursor();
       const targetId = config.cursor || config.id;
       if (targetId) {
         loadCursorSet(targetId);
@@ -798,9 +857,16 @@
       ...(dataset || {}),
     };
 
-    if (dataset.hideNative) {
-      injectNativeHideCSS();
+    // Hide the native cursor only after a pack has rendered. When the engine
+    // is loaded as a plain script the default is to hide it; bundle users opt
+    // in through Curases.init().
+    if (Object.keys(dataset).length > 0) {
+      hideNativeRequested = dataset.hideNative !== false;
+    } else {
+      hideNativeRequested = false;
     }
+
+    if (!hideNativeRequested) restoreNativeCursor();
 
     if (effective.speed !== undefined) options.speed = effective.speed;
     if (effective.size !== undefined) options.size = effective.size;
