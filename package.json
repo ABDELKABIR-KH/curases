@@ -11,6 +11,7 @@
     "engine:build:dev": "node scripts/build-engine.mjs --dev",
     "test:delivery": "node scripts/check-delivery.mjs",
     "test:engine": "node scripts/check-engine.mjs",
+    "test:edge-dive": "node scripts/check-edge-dive.mjs",
     "prebuild": "npm run engine:build",
     "build:sdk": "cd packages/curases && tsup"
   },

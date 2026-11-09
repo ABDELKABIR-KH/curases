@@ -11,7 +11,7 @@ export type CurasesProps = CurasesOptions;
 export function useCurases(options: CurasesOptions = {}): React.MutableRefObject<CurasesInstance | null> {
   const instanceRef = useRef<CurasesInstance | null>(null);
 
-  const { cursor, size, speed, color, hideNativeCursor, cdnUrl } = options;
+  const { cursor, size, speed, color, edgeDive, hideNativeCursor, cdnUrl } = options;
 
   useEffect(() => {
     let cancelled = false;
@@ -21,6 +21,7 @@ export function useCurases(options: CurasesOptions = {}): React.MutableRefObject
       size,
       speed,
       color,
+      edgeDive,
       hideNativeCursor,
       cdnUrl,
     }).then((instance) => {
@@ -56,6 +57,11 @@ export function useCurases(options: CurasesOptions = {}): React.MutableRefObject
     if (!instanceRef.current) return;
     if (color !== undefined) instanceRef.current.setColor(color);
   }, [color]);
+
+  useEffect(() => {
+    if (!instanceRef.current) return;
+    if (edgeDive !== undefined) instanceRef.current.setEdgeDive(edgeDive);
+  }, [edgeDive]);
 
   return instanceRef;
 }

@@ -15,6 +15,7 @@ Curases renders custom SVGs inside a high-z-index hardware-accelerated DOM conta
 - Position smoothing uses lerp (linear interpolation) on each `requestAnimationFrame`:
   `tx += (targetX - tx) * speed`
   `ty += (targetY - ty) * speed`
+- Predictive edge dive tracks an EMA pointer velocity (`alpha = 0.4`) and projects it forward (`42ms` by default). Exit confidence is `clamp(v_normal / exitThreshold, 0, 1) * cos(theta)`, so parallel motion along an edge never triggers capture. A virtual dive horizon sits `edgeBuffer` px (`18px` default) inside every raw boundary. A `48px` outer prediction zone (measured from the raw edge) prepares pitch/scale, and a `32px` inner well applies an ease-out magnetic lead (`leadFactor = 1 - (1 - m)^3`, where `m` is normalized over the `14px` band between the well and the horizon) that races the rendered cursor ahead of the physical pointer. The captured scale is driven directly from the rendered distance and hits `scale = 0` exactly on the virtual horizon, roughly `18px` before the pointer touches the border. Pitch reaches `45deg`, Z-axis alignment reaches `15deg`, and corners blend independent X and Y pulls. When the active bounds fill the viewport width, left/right dives are auto-suppressed (top/bottom remain active; override with `autoSuppressFlushSides: false` or `edges`). A `120ms` hysteresis lock (released when `v_normal < -0.15 px/ms`) prevents flicker. Re-entry spawns `6px` outside at `scale = 0`, pitched `45deg` inward, stays submerged while the pointer crosses the buffer, then an underdamped spring (`stiffness = 320`, `damping = 20`) injects the entry velocity and pops the cursor back onto the pointer.
 - Native OS cursor is suppressed via `* { cursor: none !important; }` unless `data-hide-native="false"`.
 
 ---
@@ -100,6 +101,7 @@ declare global {
       setColor: (color: string) => void;
       setRoughness: (roughness: number) => void;
       setBoil: (boil: number) => void;
+      setEdgeDive: (edgeDive: boolean | { edgeBuffer?: number; outerMargin?: number; magneticRadius?: number; magneticStrength?: number; exitThreshold?: number; autoSuppressFlushSides?: boolean; edges?: { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }; wallBump?: boolean; wallBumpIntensity?: number; margin?: number; lookahead?: number; scope?: string | HTMLElement | null }) => void;
       state: (state: string) => void;
       show: () => void;
       hide: () => void;
@@ -114,6 +116,28 @@ interface CurasesOptions {
   color?: string;
   roughness?: number;
   boil?: number;
+  edgeDive?: boolean | {
+    enabled?: boolean;
+    edgeBuffer?: number;
+    outerMargin?: number;
+    magneticRadius?: number;
+    magneticStrength?: number;
+    exitThreshold?: number;
+    autoSuppressFlushSides?: boolean;
+    edges?: {
+      top?: boolean;
+      bottom?: boolean;
+      left?: boolean;
+      right?: boolean;
+    };
+    wallBump?: boolean;
+    wallBumpIntensity?: number;
+    margin?: number;
+    lookahead?: number;
+    scope?: string | HTMLElement | null;
+    stiffness?: number;
+    damping?: number;
+  };
 }
 
 export function useCurases(options: CurasesOptions = {}) {

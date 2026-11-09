@@ -80,6 +80,15 @@ export function CustomCursor() {
 - `data-color`: Hex (`#00ffcc`) or RGB (`rgb(0, 255, 204)`) color override. Omit to preserve designer SVG fills.
 - `data-roughness`: Hand-drawn path roughness (`0` = clean/solid lines, `0.5` = subtle pen wobble, `2.0` = maximum sketchy wobble). Paths are re-drawn with seeded per-point jitter.
 - `data-boil`: Animated sketch flicker from `0` (static sketch) to `1.0` (maximum boil). Defaults to `0.3`.
+- `data-edge-dive`: Predictive edge-dive / magnetic capture (`"true"` default). Set `"false"` to disable.
+- `data-edge-buffer`: Virtual dive horizon inset from the raw edge in px (default `18`). The cursor reaches `scale = 0` here before the pointer hits the border.
+- `data-edge-outer-margin`: Outer prediction zone in px from the raw edge (default `48`).
+- `data-edge-magnetic-radius`: Inner magnetic capture well in px from the raw edge (default `32`).
+- `data-edge-magnetic-strength`: Multiplier for the ease-out magnetic lead curve (default `1.0`).
+- `data-edge-exit-threshold`: Velocity toward an edge, in px/ms, for full exit confidence (default `0.35`).
+- `data-edge-margin`: Legacy alias for the outer prediction zone (default `28`).
+- `data-edge-lookahead`: Velocity projection time in ms (default `42`).
+- `data-edge-scope`: Optional CSS selector for a scoped container boundary. The cursor is clipped to the container while inside it.
 - `data-hide-native`: `"true"` (default) automatically hides the native OS cursor using CSS. Set `"false"` to keep native cursor visible.
 
 ---
@@ -92,6 +101,7 @@ When the script is loaded, `window.Curases` exposes:
 - `Curases.setColor(string)`: Override color tint.
 - `Curases.setRoughness(number)`: Live-update the hand-drawn sketch roughness (`0` - `2`).
 - `Curases.setBoil(number)`: Live-update the boil flicker amount (`0` = static, `1` = max).
+- `Curases.setEdgeDive(value)`: Toggle predictive edge dive (`false`) or tune `{ edgeBuffer, outerMargin, magneticRadius, magneticStrength, exitThreshold, autoSuppressFlushSides, edges, wallBump, wallBumpIntensity, lookahead, scope, stiffness, damping }`. When bounds fill the viewport width, left/right are auto-suppressed by default and produce a tactile wall-bump on fast impact.
 - `Curases.state(string)`: Force a specific state (`"hover"`, `"typing"`, `"drag"`, `"normal"`).
 - `Curases.hide()` / `Curases.show()`: Toggle cursor visibility.
 

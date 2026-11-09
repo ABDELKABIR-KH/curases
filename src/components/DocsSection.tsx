@@ -107,7 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
                 <button
                   onClick={() => copyToClipboard(agentPromptSnippet, "prompt")}
-                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg !bg-black hover:!bg-zinc-900 !text-white text-xs font-medium transition-colors cursor-pointer"
                 >
                   {copiedSnippet === "prompt" ? (
                     <>
