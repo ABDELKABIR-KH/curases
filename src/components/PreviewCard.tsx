@@ -526,7 +526,7 @@ export default function PreviewCard({
             <feDisplacementMap
               in="SourceGraphic"
               in2="tornNoise"
-              scale="10"
+              scale="16"
               xChannelSelector="R"
               yChannelSelector="G"
             />

@@ -27,7 +27,7 @@
 
 .preview-paper-sheet {
   position: absolute;
-  inset: 7px;
+  inset: 0;
   z-index: 0;
   border-radius: 10px;
   background: var(--color-panel, rgba(0, 0, 0, 0.024));
