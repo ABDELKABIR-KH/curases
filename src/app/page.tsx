@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -190,6 +191,53 @@ function ArcSwatch({
   );
 }
 
+function HandRule({ className = "" }: { className?: string }) {
+  const filterId = `hand-rule-${useId().replace(/:/g, "")}`;
+
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 400 6"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <filter id={filterId} x="-5%" y="-300%" width="110%" height="700%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.16 0.5"
+            numOctaves="2"
+            seed="4"
+            result="ruleNoise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="ruleNoise"
+            scale="4"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </defs>
+      <g
+        filter={`url(#${filterId})`}
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+      >
+        <path d="M2 3.4H398" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        <path
+          d="M8 3.9H392"
+          strokeWidth="0.8"
+          opacity="0.4"
+          vectorEffect="non-scaling-stroke"
+        />
+      </g>
+    </svg>
+  );
+}
+
 function RuleHeading({
   children,
   className = "",
@@ -204,7 +252,7 @@ function RuleHeading({
       >
         {children}
       </h2>
-      <div className="h-px flex-1 bg-line" />
+      <HandRule className="h-[6px] flex-1 text-line" />
     </div>
   );
 }
