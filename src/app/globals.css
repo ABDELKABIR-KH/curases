@@ -7,7 +7,7 @@
  */
 @theme inline {
   --font-sans: var(--font-nunito), system-ui, sans-serif;
-  --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-body: var(--font-nunito), system-ui, sans-serif;
   --font-wordmark: var(--font-playpen), var(--font-nunito), system-ui, sans-serif;
 }
 

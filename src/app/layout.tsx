@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Nunito_Sans, Playpen_Sans } from "next/font/google";
+import { Nunito_Sans, Playpen_Sans } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -7,12 +7,6 @@ import "./globals.css";
 const nunito = Nunito_Sans({
   subsets: ["latin"],
   variable: "--font-nunito",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
   display: "swap",
 });
 
@@ -55,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${nunito.variable} ${inter.variable} ${playpen.variable} h-full antialiased`}
+      className={`${nunito.variable} ${playpen.variable} h-full antialiased`}
     >
       <head>
         {/* Curases Custom Cursor Engine */}
