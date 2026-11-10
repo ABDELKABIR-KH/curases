@@ -15,8 +15,8 @@
   user-select: none;
 }
 
-/* Torn-paper sheet: a filled layer whose edges are displaced by noise and
-   softly bleached toward white so the sandbox dissolves into the page. */
+/* Torn-paper sheet: a filled layer whose edges are displaced by noise so the
+   sandbox is cut by a rough, sketchy contour instead of a perfect rectangle. */
 .preview-paper-defs {
   position: absolute;
   width: 0;
@@ -31,7 +31,6 @@
   z-index: 0;
   border-radius: 10px;
   background: var(--color-panel, rgba(0, 0, 0, 0.024));
-  box-shadow: inset 0 0 7px 2px #ffffff;
   filter: url(#preview-paper-torn);
   pointer-events: none;
 }
