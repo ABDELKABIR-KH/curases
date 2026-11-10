@@ -16,6 +16,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(root, "src/engine/engine.source.js"), "utf-8");
 const pack = JSON.parse(await readFile(join(root, "src/data/cursors/handy.json"), "utf-8"));
 
+// The resting cursor sits at (pointer - hotspot), so geometry assertions must
+// follow the pack instead of assuming a fixed tip offset.
+const HOTSPOT = pack.hotspots?.normal || pack.hotspots?.default || [0, 0];
+
 function createElement(tagName, registry) {
   const element = {
     nodeType: 1,
@@ -264,10 +268,10 @@ await check("slow movement inside the buffer keeps the cursor visible", async ()
   assert(!run.transform.includes("perspective"), `slow movement dived: ${run.transform}`);
 
   const base = baseTranslate(run.transform);
-  // Hotspot is 1px; the cursor must still sit on the pointer even though the
+  // The cursor must still sit on the pointer even though the
   // pointer is deep inside the buffer.
   assert(
-    Math.abs(base.y - (6 - 1)) < 0.6,
+    Math.abs(base.y - (6 - HOTSPOT[1])) < 0.6,
     `cursor lost its position inside the buffer: ${base.y}`
   );
 });
@@ -446,8 +450,10 @@ await check("parallel motion near any edge stays locked to the pointer", async (
     const base = baseTranslate(run.transform);
     const normalValue = edge.fixed.axis === "y" ? base.y : base.x;
     const tangentValue = edge.fixed.axis === "y" ? base.x : base.y;
-    const expectedNormal = edge.fixed.value - 1;
-    const expectedTangent = moving - 1;
+    const normalHotspot = edge.fixed.axis === "y" ? HOTSPOT[1] : HOTSPOT[0];
+    const tangentHotspot = edge.fixed.axis === "y" ? HOTSPOT[0] : HOTSPOT[1];
+    const expectedNormal = edge.fixed.value - normalHotspot;
+    const expectedTangent = moving - tangentHotspot;
 
     assert(
       Math.abs(normalValue - expectedNormal) < 0.6,
@@ -484,9 +490,9 @@ await check("magnetic lead carries the cursor ahead of the pointer", async () =>
   const base = baseTranslate(run.transform);
   const pointerY = 25;
   // The rendered cursor must lead the physical pointer toward the edge.
-  assert(base.y < pointerY - 1 - 2, `cursor did not lead the pointer: ${base.y}`);
-  // ...without overshooting the virtual horizon at 18px (hotspot 1px).
-  assert(base.y >= 18 - 1 - 0.75, `cursor overshot the horizon: ${base.y}`);
+  assert(base.y < pointerY - HOTSPOT[1] - 2, `cursor did not lead the pointer: ${base.y}`);
+  // ...without overshooting the virtual horizon at 18px.
+  assert(base.y >= 18 - HOTSPOT[1] - 0.75, `cursor overshot the horizon: ${base.y}`);
 
   const roll = run.transform.match(/rotateZ\((-?[\d.]+)deg\)/);
   assert(roll && Math.abs(parseFloat(roll[1])) > 0.5, `missing Z nose alignment: ${run.transform}`);
@@ -521,7 +527,7 @@ await check("dive reaches scale 0 at the virtual horizon, before the raw edge", 
 
   const base = baseTranslate(run.transform);
   assert(
-    Math.abs(base.y - (18 - 1)) < 1.5,
+    Math.abs(base.y - (18 - HOTSPOT[1])) < 1.5,
     `cursor did not rest on the horizon: ${base.y}`
   );
 });
@@ -707,7 +713,7 @@ await check("flush viewport width suppresses left/right while keeping top/bottom
       `${side.name}: flush side should have no dive: ${run.transform}`
     );
     const base = baseTranslate(run.transform);
-    const expectedX = side.to[0] - 1; // Handy hotspot x = 1
+    const expectedX = side.to[0] - HOTSPOT[0]; // resting spot = pointer - hotspot
     assert(
       Math.abs(base.x - expectedX) < 1.5,
       `${side.name}: cursor should stay on the pointer: ${base.x}`
@@ -993,9 +999,12 @@ await check("wall bump flicker stays inside the viewport", async () => {
     minBaseX = Math.min(minBaseX, base.x);
   }
 
-  // Cursor hotspot is 1px; pointer was at x=1. Base translate is renderX-hx + bump.
-  // Inward-only flicker must never push it outside the viewport left.
-  assert(minBaseX >= -0.01, `wall bump pushed cursor outside viewport: ${minBaseX}`);
+  // Base translate is renderX - hx + bump; pointer was at x=1. Inward-only
+  // flicker must never push the cursor further left than its resting spot.
+  assert(
+    minBaseX >= 1 - HOTSPOT[0] - 0.01,
+    `wall bump pushed cursor outside viewport: ${minBaseX}`
+  );
 });
 
 console.log("\nCurases edge-dive check\n");
