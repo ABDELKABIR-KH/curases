@@ -63,21 +63,27 @@ body:has([data-curases-sandbox]:hover) #custom-cursor {
 .preview-mini-cursor.color-custom svg path[fill="white"],
 .preview-mini-cursor.color-custom svg path[fill="#ffffff"],
 .preview-mini-cursor.color-custom svg path[fill="#fff"],
+.preview-mini-cursor.color-custom svg path[fill="#f8f8f8"],
 .preview-mini-cursor.color-custom svg path.curases-sketch-frame[fill="white"],
 .preview-mini-cursor.color-custom svg path.curases-sketch-frame[fill="#ffffff"],
 .preview-mini-cursor.color-custom svg path.curases-sketch-frame[fill="#fff"],
+.preview-mini-cursor.color-custom svg path.curases-sketch-frame[fill="#f8f8f8"],
 .preview-idle-cursor.color-custom svg path[fill="white"],
 .preview-idle-cursor.color-custom svg path[fill="#ffffff"],
 .preview-idle-cursor.color-custom svg path[fill="#fff"],
+.preview-idle-cursor.color-custom svg path[fill="#f8f8f8"],
 .preview-idle-cursor.color-custom svg path.curases-sketch-frame[fill="white"],
 .preview-idle-cursor.color-custom svg path.curases-sketch-frame[fill="#ffffff"],
 .preview-idle-cursor.color-custom svg path.curases-sketch-frame[fill="#fff"],
+.preview-idle-cursor.color-custom svg path.curases-sketch-frame[fill="#f8f8f8"],
 .preview-state-card.color-custom svg path[fill="white"],
 .preview-state-card.color-custom svg path[fill="#ffffff"],
 .preview-state-card.color-custom svg path[fill="#fff"],
+.preview-state-card.color-custom svg path[fill="#f8f8f8"],
 .preview-state-card.color-custom svg path.curases-sketch-frame[fill="white"],
 .preview-state-card.color-custom svg path.curases-sketch-frame[fill="#ffffff"],
-.preview-state-card.color-custom svg path.curases-sketch-frame[fill="#fff"] {
+.preview-state-card.color-custom svg path.curases-sketch-frame[fill="#fff"],
+.preview-state-card.color-custom svg path.curases-sketch-frame[fill="#f8f8f8"] {
   fill: currentColor !important;
 }
 

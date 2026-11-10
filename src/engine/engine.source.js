@@ -630,9 +630,11 @@
         #custom-cursor svg path[fill="white"],
         #custom-cursor svg path[fill="#ffffff"],
         #custom-cursor svg path[fill="#fff"],
+        #custom-cursor svg path[fill="#f8f8f8"],
         #custom-cursor svg path.curases-sketch-frame[fill="white"],
         #custom-cursor svg path.curases-sketch-frame[fill="#ffffff"],
-        #custom-cursor svg path.curases-sketch-frame[fill="#fff"] {
+        #custom-cursor svg path.curases-sketch-frame[fill="#fff"],
+        #custom-cursor svg path.curases-sketch-frame[fill="#f8f8f8"] {
           fill: currentColor !important;
         }
       `;
