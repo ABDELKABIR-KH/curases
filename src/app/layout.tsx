@@ -65,6 +65,7 @@ export default function RootLayout({
           data-cursor="Handy"
           data-size="1.0"
           data-speed="1.0"
+          data-boil="0"
         />
       </head>
       <body className="min-h-full flex flex-col bg-white font-sans text-ink">

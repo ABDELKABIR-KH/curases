@@ -271,12 +271,10 @@ export default function Home() {
   // Floating bar controls
   const [sizeVal, setSizeVal] = useState(1);
   const [speedVal, setSpeedVal] = useState(1);
-  const [roughnessVal, setRoughnessVal] = useState(0);
-  const [boilVal, setBoilVal] = useState(0.3);
+  const [roughnessVal, setRoughnessVal] = useState(0.5);
   const [selectedColor, setSelectedColor] = useState("");
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
   const [isCopyMenuOpen, setIsCopyMenuOpen] = useState(false);
-  const lastBoilRef = useRef(0.3);
   const compactFan = !useMinWidth("(min-width: 1024px)");
 
   // Copy feedback
@@ -368,9 +366,6 @@ export default function Home() {
       if (typeof engine.setRoughness === "function") {
         engine.setRoughness(roughnessVal);
       }
-      if (typeof engine.setBoil === "function") {
-        engine.setBoil(boilVal);
-      }
       engine.state(activeCursorState);
       return true;
     };
@@ -389,7 +384,7 @@ export default function Home() {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [sizeVal, speedVal, selectedColor, roughnessVal, boilVal, activeCursorState]);
+  }, [sizeVal, speedVal, selectedColor, roughnessVal, activeCursorState]);
 
   const copyToClipboard = async (
     text: string,
@@ -405,37 +400,23 @@ export default function Home() {
   };
 
   const roughnessParam = roughnessVal > 0 ? `, roughness ${roughnessVal.toFixed(1)}` : "";
-  const boilParam = boilVal > 0 ? `, boil ${boilVal.toFixed(1)}` : "";
   const roughnessAttr = roughnessVal > 0 ? ` data-roughness="${roughnessVal.toFixed(1)}"` : "";
-  const boilAttr = boilVal > 0 ? ` data-boil="${boilVal.toFixed(1)}"` : "";
   const colorParam = selectedColor ? `, color "${selectedColor}"` : "";
   const colorAttr = selectedColor ? ` data-color="${selectedColor}"` : "";
 
-  const agentPrompt = `Install Curases, the custom cursor engine, with the "Handy" preset, size ${sizeVal.toFixed(1)}x, speed ${speedVal.toFixed(1)}${colorParam}${roughnessParam}${boilParam}. Docs: https://curases.com/llms.txt`;
-  const scriptTag = `<script src="https://www.curases.com/engine.js" data-cursor="Handy" data-size="${sizeVal.toFixed(1)}" data-speed="${speedVal.toFixed(1)}"${colorAttr}${roughnessAttr}${boilAttr} defer></script>`;
+  const agentPrompt = `Install Curases, the custom cursor engine, with the "Handy" preset, size ${sizeVal.toFixed(1)}x, speed ${speedVal.toFixed(1)}${colorParam}${roughnessParam}. Docs: https://curases.com/llms.txt`;
+  const scriptTag = `<script src="https://www.curases.com/engine.js" data-cursor="Handy" data-size="${sizeVal.toFixed(1)}" data-speed="${speedVal.toFixed(1)}"${colorAttr}${roughnessAttr} defer></script>`;
   
   const handleStateClick = (stateId: string) => {
     setActiveCursorState(stateId);
     getCursorEngine()?.state(stateId);
   };
 
-  const toggleBoil = () => {
-    setBoilVal((current) => {
-      if (current > 0) {
-        lastBoilRef.current = current;
-        return 0;
-      }
-      return lastBoilRef.current || 0.3;
-    });
-  };
-
   const resetCursorSettings = () => {
     setSizeVal(1);
     setSpeedVal(1);
     setSelectedColor("");
-    setRoughnessVal(0);
-    setBoilVal(0.3);
-    lastBoilRef.current = 0.3;
+    setRoughnessVal(0.5);
     setIsColorPickerOpen(false);
     handleStateClick("normal");
   };
@@ -515,9 +496,7 @@ export default function Home() {
                 speed={speedVal}
                 color={selectedColor}
                 roughness={roughnessVal}
-                boil={boilVal}
                 onReset={resetCursorSettings}
-                onToggleBoil={toggleBoil}
               />
             </div>
           </section>
@@ -884,27 +863,6 @@ export default function Home() {
           />
           <span className="hidden font-sans text-[13px] leading-[165%] font-medium text-muted lg:inline">
             {roughnessVal === 0 ? "OFF" : "FX"}
-          </span>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1.5 rounded-xl bg-control px-2 py-2 [outline:0.8px_solid_#00000005] lg:gap-4 lg:px-3.5">
-          <span className="hidden font-sans text-[13px] leading-[166%] font-medium text-muted lg:inline">
-            Boil
-          </span>
-          <input
-            type="number"
-            min="0"
-            max="1"
-            step="0.1"
-            value={boilVal}
-            onChange={(e) =>
-              setBoilVal(Math.min(1, Math.max(0, Number(e.target.value) || 0)))
-            }
-            aria-label="Cursor boil animation amount"
-            className="w-7 bg-transparent text-center font-sans text-[13px] leading-[160%] font-medium text-muted outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          />
-          <span className="hidden font-sans text-[13px] leading-[165%] font-medium text-muted lg:inline">
-            {boilVal === 0 ? "OFF" : "X"}
           </span>
         </div>
 

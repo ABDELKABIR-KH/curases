@@ -33,7 +33,6 @@ interface PreviewCardProps {
   boil?: number;
   outline?: number;
   onReset?: () => void;
-  onToggleBoil?: () => void;
 }
 
 // PRNG for roughness jitter (mulberry32)
@@ -190,10 +189,9 @@ export default function PreviewCard({
   speed = 1,
   color = "",
   roughness = 0,
-  boil = 0.3,
+  boil = 0,
   outline = 0,
   onReset,
-  onToggleBoil,
 }: PreviewCardProps) {
   const hasCustomColor = Boolean(color);
 
