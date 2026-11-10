@@ -506,6 +506,58 @@ export default function PreviewCard({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleLeave}
     >
+      {/* Torn-paper sandbox sheet + hand-drawn ink edge */}
+      <svg className="preview-paper-defs" aria-hidden="true" focusable="false">
+        <defs>
+          <filter
+            id="preview-paper-torn"
+            x="-10%"
+            y="-10%"
+            width="120%"
+            height="120%"
+          >
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.02 0.035"
+              numOctaves="3"
+              seed="8"
+              result="tornNoise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="tornNoise"
+              scale="6"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+          <filter
+            id="preview-paper-brush"
+            x="-10%"
+            y="-10%"
+            width="120%"
+            height="120%"
+          >
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.035 0.05"
+              numOctaves="2"
+              seed="3"
+              result="brushNoise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="brushNoise"
+              scale="3.5"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+      </svg>
+      <span className="preview-paper-sheet" aria-hidden="true" />
+      <span className="preview-paper-edge" aria-hidden="true" />
+
       {/* Top Status Badge */}
       <div className="preview-status-badge">
         <span className="preview-status-text">Sandbox</span>
