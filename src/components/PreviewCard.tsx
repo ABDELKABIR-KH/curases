@@ -506,7 +506,7 @@ export default function PreviewCard({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleLeave}
     >
-      {/* Torn-paper sandbox sheet + hand-drawn ink edge */}
+      {/* Torn-paper sandbox sheet that fades into the white page */}
       <svg className="preview-paper-defs" aria-hidden="true" focusable="false">
         <defs>
           <filter
@@ -518,7 +518,7 @@ export default function PreviewCard({
           >
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="0.02 0.035"
+              baseFrequency="0.025 0.04"
               numOctaves="3"
               seed="8"
               result="tornNoise"
@@ -526,29 +526,7 @@ export default function PreviewCard({
             <feDisplacementMap
               in="SourceGraphic"
               in2="tornNoise"
-              scale="6"
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-          <filter
-            id="preview-paper-brush"
-            x="-10%"
-            y="-10%"
-            width="120%"
-            height="120%"
-          >
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.035 0.05"
-              numOctaves="2"
-              seed="3"
-              result="brushNoise"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="brushNoise"
-              scale="3.5"
+              scale="10"
               xChannelSelector="R"
               yChannelSelector="G"
             />
@@ -556,7 +534,6 @@ export default function PreviewCard({
         </defs>
       </svg>
       <span className="preview-paper-sheet" aria-hidden="true" />
-      <span className="preview-paper-edge" aria-hidden="true" />
 
       {/* Top Status Badge */}
       <div className="preview-status-badge">
