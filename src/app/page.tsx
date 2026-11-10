@@ -924,7 +924,7 @@ export default function Home() {
         <span className="h-[30px] w-px shrink-0 bg-line" />
 
         <div
-          className="flex shrink-0 items-center rounded-xl bg-control [outline:0.8px_solid_#00000005]"
+          className="flex shrink-0 items-center rounded-xl bg-black [outline:0.8px_solid_#00000005]"
           ref={copyDropdownRef}
         >
           <button
@@ -932,7 +932,7 @@ export default function Home() {
             onClick={() =>
               copyToClipboard(agentPrompt, setCopiedFloatingPrompt)
             }
-            className="min-w-[72px] py-2 pr-1 pl-2 text-left font-sans text-[13px] leading-[160%] font-medium text-muted transition-colors hover:text-ink lg:min-w-[78px] lg:pr-2 lg:pl-3.5 cursor-pointer"
+            className="min-w-[72px] rounded-l-xl py-2 pr-1 pl-2 text-left font-sans text-[13px] leading-[160%] font-medium text-white transition-colors hover:text-white/70 lg:min-w-[78px] lg:pr-2 lg:pl-3.5 cursor-pointer"
           >
             {copiedFloatingPrompt ? "Copied" : "Copy prompt"}
           </button>
@@ -944,7 +944,7 @@ export default function Home() {
               aria-expanded={isCopyMenuOpen}
               aria-label="More copy formats"
               title="More copy formats"
-              className="flex items-center py-2 pr-2 pl-1 text-muted opacity-55 transition-opacity hover:opacity-100 lg:pr-3.5 cursor-pointer"
+              className="flex items-center rounded-r-xl py-2 pr-2 pl-1 text-white opacity-55 transition-opacity hover:opacity-100 lg:pr-3.5 cursor-pointer"
             >
               <ChevronDown className="size-[18px]" strokeWidth={1.5} />
             </button>
