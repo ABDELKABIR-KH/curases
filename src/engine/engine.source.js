@@ -618,9 +618,10 @@
     return SCRIBBLE_BODY_FILLS.indexOf(fill) !== -1;
   }
 
-  // One continuous back-and-forth pen sweep over the glyph's bbox,
-  // tilted so the rows never read as machine-straight, then jittered
-  // and smoothed like every other sketch line.
+  // One continuous pen scribble over the glyph's bbox. Every pass gets its
+  // own angle, gap, reach and lane drift so strokes cross, clump and stop
+  // short like real hand scribbling rather than machine-straight hatching;
+  // then it is jittered and smoothed like every other sketch line.
   function buildScribbleStroke(bbox, strokeWidth, rand, boilRand, boilAmp, amp) {
     const tilt = -0.32;
     const ux = Math.cos(tilt), uy = Math.sin(tilt);
@@ -630,23 +631,39 @@
     const w = bbox.maxX - bbox.minX;
     const h = bbox.maxY - bbox.minY;
 
-    // Rotated rows must still cover the whole bbox, so sweep the
-    // circumscribed square rather than the bbox itself (clipped anyway).
-    const halfSpan = Math.sqrt(w * w + h * h) / 2 + strokeWidth * 2;
+    // Wobbled rows must still cover the whole bbox, so sweep the
+    // circumscribed square with room to spare (clipped anyway).
+    const halfSpan = Math.sqrt(w * w + h * h) / 2 + strokeWidth * 4;
     const spacing = Math.max(strokeWidth * 1.75, 2.1);
     const step = Math.max(strokeWidth * 1.6, 2.2);
 
     const points = [];
     let row = 0;
-    for (let s = -halfSpan; s <= halfSpan + 0.01; s += spacing, row++) {
+    let s = -halfSpan;
+    while (s <= halfSpan + 0.01) {
       const dir = row % 2 === 0 ? 1 : -1;
-      const from = -halfSpan * dir;
-      const to = halfSpan * dir;
-      const count = Math.max(2, Math.ceil((halfSpan * 2) / step));
+      // This pass's own pen angle, so strokes cross inside the glyph.
+      const rowTilt = tilt + (rand() - 0.5) * 0.4;
+      const rux = Math.cos(rowTilt), ruy = Math.sin(rowTilt);
+      // Lane drift so neighboring passes are not perfectly parallel.
+      const lane = s + (rand() - 0.5) * spacing * 0.5;
+      // Some passes stop short of an edge (the pen runs out of room),
+      // leaving a visible diagonal hop to the next pass.
+      const startTrim = rand() < 0.35 ? halfSpan * (0.1 + rand() * 0.25) : 0;
+      const endTrim = rand() < 0.35 ? halfSpan * (0.1 + rand() * 0.25) : 0;
+      const from = (-halfSpan + startTrim) * dir;
+      const to = (halfSpan - endTrim) * dir;
+
+      const span = Math.abs(to - from);
+      const count = Math.max(2, Math.ceil(span / step));
       for (let i = 0; i <= count; i++) {
         const t = from + ((to - from) * i) / count;
-        points.push([cx + ux * t + vx * s, cy + uy * t + vy * s]);
+        points.push([cx + rux * t + vx * lane, cy + ruy * t + vy * lane]);
       }
+
+      // Random pen gap between passes (uneven row density).
+      s += spacing * (0.6 + rand() * 0.85);
+      row++;
     }
 
     const base = jitterPoints(points, rand, amp);
