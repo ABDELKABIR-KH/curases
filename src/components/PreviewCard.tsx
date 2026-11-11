@@ -32,6 +32,7 @@ interface PreviewCardProps {
   roughness?: number;
   boil?: number;
   outline?: number;
+  scribble?: boolean;
   onReset?: () => void;
 }
 
@@ -180,6 +181,233 @@ function processRoughnessSvg(
   }
 }
 
+// =========================================================
+// Scribble fill (mirrors the engine's applyScribble)
+//
+// Replaces the solid body fill with one continuous zigzag pen
+// stroke per glyph, clipped to the jittered outline. Strokes use
+// currentColor so the container color tints them.
+// =========================================================
+const SCRIBBLE_BODY_FILLS = ["white", "#ffffff", "#fff", "#f8f8f8"];
+const SCRIBBLE_CLIP_PREFIX = "curases-scribble-clip";
+let scribbleClipSeq = 0;
+
+function isScribbleBodyFill(pathEl: Element): boolean {
+  const fill = (pathEl.getAttribute("fill") || "").toLowerCase();
+  return SCRIBBLE_BODY_FILLS.includes(fill);
+}
+
+function buildScribbleStroke(
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+  strokeWidth: number,
+  rand: () => number,
+  boilRand: () => number,
+  boilAmp: number,
+  amp: number
+): string {
+  const tilt = -0.32;
+  const ux = Math.cos(tilt),
+    uy = Math.sin(tilt);
+  const vx = -Math.sin(tilt),
+    vy = Math.cos(tilt);
+  const cx = (bbox.minX + bbox.maxX) / 2;
+  const cy = (bbox.minY + bbox.maxY) / 2;
+  const w = bbox.maxX - bbox.minX;
+  const h = bbox.maxY - bbox.minY;
+
+  // Rotated rows must still cover the whole bbox, so sweep the
+  // circumscribed square (clipped to the glyph anyway).
+  const halfSpan = Math.sqrt(w * w + h * h) / 2 + strokeWidth * 2;
+  const spacing = Math.max(strokeWidth * 1.75, 2.1);
+  const step = Math.max(strokeWidth * 1.6, 2.2);
+
+  const points: [number, number][] = [];
+  let row = 0;
+  for (let s = -halfSpan; s <= halfSpan + 0.01; s += spacing, row++) {
+    const dir = row % 2 === 0 ? 1 : -1;
+    const from = -halfSpan * dir;
+    const to = halfSpan * dir;
+    const count = Math.max(2, Math.ceil((halfSpan * 2) / step));
+    for (let i = 0; i <= count; i++) {
+      const t = from + ((to - from) * i) / count;
+      points.push([cx + ux * t + vx * s, cy + uy * t + vy * s]);
+    }
+  }
+
+  const base = jitterPoints(points, rand, amp);
+  const framePoints = boilAmp > 0 ? jitterPoints(base, boilRand, boilAmp) : base;
+  return pointsToPath(framePoints, false);
+}
+
+function processScribbleSvg(
+  svgString: string,
+  roughness: number,
+  boil: number
+): string {
+  if (typeof window === "undefined" || !svgString) return svgString;
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgString, "image/svg+xml");
+    const svgEl = doc.querySelector("svg");
+    if (!svgEl) return svgString;
+
+    const paths = Array.from(svgEl.querySelectorAll("path"));
+    if (!paths.length) return svgString;
+
+    const bodies = paths.filter(isScribbleBodyFill);
+    if (!bodies.length) return svgString;
+
+    // Offscreen measurement copy (same trick as the roughness pass).
+    let tempContainer: HTMLDivElement | null = null;
+    let tempSvg: SVGSVGElement | null = null;
+    if (typeof document !== "undefined") {
+      tempContainer = document.createElement("div");
+      tempContainer.style.position = "absolute";
+      tempContainer.style.visibility = "hidden";
+      tempContainer.style.pointerEvents = "none";
+      tempContainer.style.top = "-9999px";
+      tempContainer.style.left = "-9999px";
+      document.body.appendChild(tempContainer);
+      tempContainer.innerHTML = svgString;
+      tempSvg = tempContainer.querySelector("svg");
+    }
+
+    const amp = Math.max(0.3, Math.max(0, roughness) * 0.55);
+    const boilAmp = Math.min(1, Math.max(0, boil)) * 0.5;
+    const frameCount = boilAmp > 0 ? 3 : 1;
+
+    // After the roughness pass each body path exists as one clone per
+    // boil frame (carrying data-i); otherwise the static path stands in
+    // for every frame.
+    const sketched = bodies.some((p) => p.getAttribute("data-i") !== null);
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const mk = (tag: string) =>
+      doc.createElementNS(svgNS, tag) as unknown as SVGElement;
+    const defs = mk("defs");
+
+    bodies.forEach((pathEl) => {
+      const parent = pathEl.parentNode;
+      if (!parent) return;
+
+      const d = pathEl.getAttribute("d") || "";
+      if (!d) return;
+
+      const strokeWidth = Math.max(
+        0.75,
+        parseFloat(pathEl.getAttribute("stroke-width") || "") || 1.5
+      );
+
+      // Measure via the attached copy so sampling works.
+      const idx = paths.indexOf(pathEl);
+      const tempPaths = tempSvg
+        ? Array.from(tempSvg.querySelectorAll("path"))
+        : null;
+      const measurePath =
+        (tempPaths && tempPaths[idx]) || (pathEl as unknown as SVGPathElement);
+      const points = samplePath(measurePath as SVGPathElement, 1.8);
+      if (!points || points.length < 2) return;
+
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const [x, y] of points) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+      const pad = strokeWidth + 0.5;
+      const bbox = {
+        minX: minX - pad,
+        minY: minY - pad,
+        maxX: maxX + pad,
+        maxY: maxY + pad,
+      };
+
+      const frames = sketched
+        ? [
+            {
+              el: pathEl,
+              frame: parseInt(pathEl.getAttribute("data-i") || "0", 10) || 0,
+              d,
+            },
+          ]
+        : Array.from({ length: frameCount }, (_, frame) => ({
+            el: pathEl,
+            frame,
+            d,
+          }));
+
+      frames.forEach(({ el, frame, d: frameD }) => {
+        const seed = hashString(frameD + "::scribble");
+        const baseRand = mulberry32(seed);
+        const frameRand = mulberry32(seed + (frame + 1) * 7919);
+        const scribbleD = buildScribbleStroke(
+          bbox,
+          strokeWidth,
+          baseRand,
+          frameRand,
+          boilAmp,
+          amp
+        );
+
+        // Clip to this frame's outline so the fill follows the wobbly ink.
+        const clipId = `${SCRIBBLE_CLIP_PREFIX}-${++scribbleClipSeq}`;
+        const clip = mk("clipPath");
+        clip.setAttribute("id", clipId);
+        const clipShape = mk("path");
+        clipShape.setAttribute("d", frameD);
+        clip.appendChild(clipShape);
+        defs.appendChild(clip);
+
+        const g = mk("g");
+        g.setAttribute("class", "curases-sketch-frame");
+        g.setAttribute("data-i", String(frame));
+        g.setAttribute("clip-path", `url(#${clipId})`);
+
+        const scribble = mk("path");
+        scribble.setAttribute("d", scribbleD);
+        scribble.setAttribute("fill", "none");
+        scribble.setAttribute("stroke", "currentColor");
+        scribble.setAttribute("stroke-width", String(strokeWidth));
+        scribble.setAttribute("stroke-linecap", "round");
+        scribble.setAttribute("stroke-linejoin", "round");
+        g.appendChild(scribble);
+
+        parent.insertBefore(g, el);
+      });
+
+      // The solid body gives way to the scribble.
+      pathEl.setAttribute("fill", "none");
+    });
+
+    if (tempContainer && tempContainer.parentNode) {
+      tempContainer.parentNode.removeChild(tempContainer);
+    }
+
+    if (defs.children.length) svgEl.appendChild(defs);
+
+    return new XMLSerializer().serializeToString(svgEl);
+  } catch (err) {
+    console.error("Error processing SVG scribble:", err);
+    return svgString;
+  }
+}
+
+// The same processed state string is injected into several containers
+// (active window, idle window, 20 carousel clones), so clip-path ids
+// are re-salted per site to keep every reference unique in the DOM.
+function withUniqueClipIds(svg: string, salt: string): string {
+  if (!svg.includes(SCRIBBLE_CLIP_PREFIX)) return svg;
+  return svg.replace(
+    new RegExp(`${SCRIBBLE_CLIP_PREFIX}-(\\d+)`, "g"),
+    `${SCRIBBLE_CLIP_PREFIX}-$1-${salt}`
+  );
+}
+
 export default function PreviewCard({
   cursorStates,
   hotspots,
@@ -191,19 +419,25 @@ export default function PreviewCard({
   roughness = 0,
   boil = 0,
   outline = 0,
+  scribble = false,
   onReset,
 }: PreviewCardProps) {
   const hasCustomColor = Boolean(color);
 
-  // Process all states in real time with roughness and boil
+  // Scribble strokes are currentColor; without a tint they fall back to ink.
+  const effectiveColor = scribble ? color || "#050505" : color;
+
+  // Process all states in real time with roughness, boil, and scribble fill
   const processedStates = useMemo(() => {
-    if (roughness <= 0) return cursorStates;
     const result: Record<string, string> = {};
     for (const [key, svg] of Object.entries(cursorStates)) {
-      result[key] = processRoughnessSvg(svg, roughness, boil);
+      let processed = svg;
+      if (roughness > 0) processed = processRoughnessSvg(processed, roughness, boil);
+      if (scribble) processed = processScribbleSvg(processed, roughness, boil);
+      result[key] = processed;
     }
     return result;
-  }, [cursorStates, roughness, boil]);
+  }, [cursorStates, roughness, boil, scribble]);
 
   // Setup original states
   const originalStates = useMemo(() => {
@@ -574,8 +808,10 @@ export default function PreviewCard({
           className={`preview-mini-cursor${
             hasCustomColor ? " color-custom" : ""
           }`}
-          style={hasCustomColor ? { color } : undefined}
-          dangerouslySetInnerHTML={{ __html: renderedActiveSvg }}
+          style={effectiveColor ? { color: effectiveColor } : undefined}
+          dangerouslySetInnerHTML={{
+            __html: withUniqueClipIds(renderedActiveSvg, "mini"),
+          }}
         />
       )}
 
@@ -585,9 +821,11 @@ export default function PreviewCard({
           className={`preview-idle-cursor${
             hasCustomColor ? " color-custom" : ""
           }`}
-          style={hasCustomColor ? { color } : undefined}
+          style={effectiveColor ? { color: effectiveColor } : undefined}
           animate={idleControls}
-          dangerouslySetInnerHTML={{ __html: renderedIdleSvg }}
+          dangerouslySetInnerHTML={{
+            __html: withUniqueClipIds(renderedIdleSvg, "idle"),
+          }}
         />
       )}
 
@@ -607,7 +845,7 @@ export default function PreviewCard({
                       className={`preview-state-card ${
                         isActive ? "active" : ""
                       }${hasCustomColor ? " color-custom" : ""}`}
-                      style={hasCustomColor ? { color } : undefined}
+                      style={effectiveColor ? { color: effectiveColor } : undefined}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCardClick(index);
@@ -627,7 +865,9 @@ export default function PreviewCard({
                         }
                       }}
                       onMouseLeave={() => setTooltip(null)}
-                      dangerouslySetInnerHTML={{ __html: state.icon }}
+                      dangerouslySetInnerHTML={{
+                        __html: withUniqueClipIds(state.icon, `card-${index}`),
+                      }}
                     />
                   </div>
                 );

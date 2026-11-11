@@ -22,6 +22,7 @@
           roughness: opts.roughness || 0,
           boil: opts.boil !== undefined ? opts.boil : 0.3,
           outline: opts.outline || 0,
+          fill: opts.fill === "scribble" ? "scribble" : "solid",
           edgeDive: opts.edgeDive
             ? {
                 enabled: opts.edgeDive.enabled !== false,
@@ -97,6 +98,7 @@
     roughness: 0, // 0 = solid/crisp; 0-2 = hand-drawn sketch wobble
     boil: 0.3, // 0 = static sketch; 0-1 = frame-to-frame pen flicker
     outline: 0, // 0 = default Figma outline; 0.5 - 3 = outer stroke thickness
+    fill: "solid", // "solid" = flat body fill; "scribble" = hatched pen fill
     // Predictive edge-dive + magnetic capture. `true` enables the defaults
     // below; pass an object to tune the zones, pull, or scope the boundary to
     // a container.
@@ -600,6 +602,179 @@
   }
 
   // ----------------------------------------------------
+  // Scribble fill
+  //
+  // Replaces the solid body fill with one continuous zigzag pen
+  // stroke per glyph, clipped to the (already jittered) outline so
+  // the scribble never escapes the shape. The stroke width matches
+  // the glyph's own outline so the fill reads as the same pen, and
+  // the strokes use `currentColor` so `setColor()` keeps tinting.
+  // ----------------------------------------------------
+  const SCRIBBLE_BODY_FILLS = ["white", "#ffffff", "#fff", "#f8f8f8"];
+  let scribbleClipSeq = 0;
+
+  function isBodyPath(pathEl) {
+    const fill = (pathEl.getAttribute("fill") || "").toLowerCase();
+    return SCRIBBLE_BODY_FILLS.indexOf(fill) !== -1;
+  }
+
+  // One continuous back-and-forth pen sweep over the glyph's bbox,
+  // tilted so the rows never read as machine-straight, then jittered
+  // and smoothed like every other sketch line.
+  function buildScribbleStroke(bbox, strokeWidth, rand, boilRand, boilAmp, amp) {
+    const tilt = -0.32;
+    const ux = Math.cos(tilt), uy = Math.sin(tilt);
+    const vx = -Math.sin(tilt), vy = Math.cos(tilt);
+    const cx = (bbox.minX + bbox.maxX) / 2;
+    const cy = (bbox.minY + bbox.maxY) / 2;
+    const w = bbox.maxX - bbox.minX;
+    const h = bbox.maxY - bbox.minY;
+
+    // Rotated rows must still cover the whole bbox, so sweep the
+    // circumscribed square rather than the bbox itself (clipped anyway).
+    const halfSpan = Math.sqrt(w * w + h * h) / 2 + strokeWidth * 2;
+    const spacing = Math.max(strokeWidth * 1.75, 2.1);
+    const step = Math.max(strokeWidth * 1.6, 2.2);
+
+    const points = [];
+    let row = 0;
+    for (let s = -halfSpan; s <= halfSpan + 0.01; s += spacing, row++) {
+      const dir = row % 2 === 0 ? 1 : -1;
+      const from = -halfSpan * dir;
+      const to = halfSpan * dir;
+      const count = Math.max(2, Math.ceil((halfSpan * 2) / step));
+      for (let i = 0; i <= count; i++) {
+        const t = from + ((to - from) * i) / count;
+        points.push([cx + ux * t + vx * s, cy + uy * t + vy * s]);
+      }
+    }
+
+    const base = jitterPoints(points, rand, amp);
+    const framePoints =
+      boilAmp > 0 ? jitterPoints(base, boilRand, boilAmp) : base;
+    return pointsToPath(framePoints, false);
+  }
+
+  function applyScribble(svgEl) {
+    // Minimal DOM stubs (engine checks) may not expose createElementNS.
+    if (typeof document.createElementNS !== "function") return;
+    ensureRoughStyle();
+
+    const paths = Array.from(svgEl.querySelectorAll("path"));
+    const bodies = paths.filter(isBodyPath);
+    if (!bodies.length) return;
+
+    // Same amplitude model as the outline sketch, with a floor so the
+    // scribble stays hand-drawn even at roughness 0.
+    const bumpMul = 1 + Math.max(0, wallBumpBoost);
+    const effectiveDamp = renderDamp * bumpMul;
+    const amp = Math.max(0.3, Math.max(0, options.roughness) * 0.55) * effectiveDamp;
+    const boilAmp = clampBoil(options.boil) * 0.5 * effectiveDamp;
+    const frameCount = boilAmp > 0 ? BOIL_FRAMES : 1;
+    svgEl.style.animation = boilAmp > 0 ? "" : "none";
+
+    // After applyRoughness each body path exists as one clone per boil
+    // frame (carrying data-i); otherwise a single static path stands in
+    // for all frames.
+    const sketched = bodies.some((p) => p.getAttribute("data-i") !== null);
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const mk = (tag) => document.createElementNS(svgNS, tag);
+    const defs = mk("defs");
+
+    bodies.forEach((pathEl) => {
+      const parent = pathEl.parentNode;
+      if (!parent) return;
+
+      const d = pathEl.getAttribute("d") || "";
+      if (!d) return;
+
+      const strokeWidth = Math.max(
+        0.75,
+        parseFloat(pathEl.getAttribute("stroke-width")) || 1.5
+      );
+
+      const points = samplePath(pathEl, 1.8);
+      if (!points || points.length < 2) return;
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = 0; i < points.length; i++) {
+        const x = points[i][0], y = points[i][1];
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+      const pad = strokeWidth + 0.5;
+      const bbox = {
+        minX: minX - pad,
+        minY: minY - pad,
+        maxX: maxX + pad,
+        maxY: maxY + pad,
+      };
+
+      const frames = sketched
+        ? [
+            {
+              el: pathEl,
+              frame: parseInt(pathEl.getAttribute("data-i"), 10) || 0,
+              d: d,
+            },
+          ]
+        : Array.from({ length: frameCount }, (_, frame) => ({
+            el: pathEl,
+            frame: frame,
+            d: d,
+          }));
+
+      frames.forEach(({ el, frame, d: frameD }) => {
+        const seed = hashString(frameD + "::scribble");
+        const baseRand = mulberry32(seed);
+        const frameRand = mulberry32(seed + (frame + 1) * 7919);
+        const scribbleD = buildScribbleStroke(
+          bbox,
+          strokeWidth,
+          baseRand,
+          frameRand,
+          boilAmp,
+          amp
+        );
+
+        // Clip to this frame's outline so the fill edge follows the
+        // wobbly ink line exactly.
+        const clipId = "curases-scribble-clip-" + ++scribbleClipSeq;
+        const clip = mk("clipPath");
+        clip.setAttribute("id", clipId);
+        const clipShape = mk("path");
+        clipShape.setAttribute("d", frameD);
+        clip.appendChild(clipShape);
+        defs.appendChild(clip);
+
+        const g = mk("g");
+        g.setAttribute("class", "curases-sketch-frame");
+        g.setAttribute("data-i", String(frame));
+        g.setAttribute("clip-path", "url(#" + clipId + ")");
+
+        const scribble = mk("path");
+        scribble.setAttribute("d", scribbleD);
+        scribble.setAttribute("fill", "none");
+        scribble.setAttribute("stroke", "currentColor");
+        scribble.setAttribute("stroke-width", String(strokeWidth));
+        scribble.setAttribute("stroke-linecap", "round");
+        scribble.setAttribute("stroke-linejoin", "round");
+        g.appendChild(scribble);
+
+        parent.insertBefore(g, el);
+      });
+
+      // The solid body gives way to the scribble.
+      pathEl.setAttribute("fill", "none");
+    });
+
+    if (defs.children.length) svgEl.appendChild(defs);
+  }
+
+  // ----------------------------------------------------
   // Update cursor SVG inside DOM
   // ----------------------------------------------------
   function updateCursor() {
@@ -638,6 +813,11 @@
           fill: currentColor !important;
         }
       `;
+    } else if (options.fill === "scribble") {
+      // Scribble strokes are drawn with currentColor; without a tint they
+      // fall back to the pack's ink so they never inherit page text color.
+      cursor.style.color = "#050505";
+      if (colorStyle) colorStyle.remove();
     } else {
       cursor.style.color = "";
       if (colorStyle) colorStyle.remove();
@@ -675,6 +855,11 @@
     const svgEl = cursor.querySelector("svg");
     if (svgEl && options.roughness > 0) {
       applyRoughness(svgEl);
+    }
+
+    // Swap solid body fills for a hand-scribbled pen fill.
+    if (svgEl && options.fill === "scribble") {
+      applyScribble(svgEl);
     }
   }
 
@@ -2011,6 +2196,7 @@
       roughness: s.hasAttribute("data-roughness") ? parseFloat(s.getAttribute("data-roughness") || "0") : undefined,
       boil: s.hasAttribute("data-boil") ? parseFloat(s.getAttribute("data-boil") || "0.3") : undefined,
       outline: s.hasAttribute("data-outline") ? parseFloat(s.getAttribute("data-outline") || "0") : undefined,
+      fill: s.getAttribute("data-fill") === "scribble" ? "scribble" : undefined,
       hideNative: s.getAttribute("data-hide-native") !== "false",
       edgeDive,
     };
@@ -2028,6 +2214,7 @@
       if (config.speed !== undefined) options.speed = config.speed;
       if (config.size !== undefined) { options.size = config.size; updateCursor(); }
       if (config.color !== undefined) { options.color = config.color || ""; updateCursor(); }
+      if (config.fill !== undefined) { options.fill = config.fill === "scribble" ? "scribble" : "solid"; updateCursor(); }
       if (config.roughness !== undefined) { options.roughness = clampRoughness(config.roughness); updateCursor(); }
       if (config.boil !== undefined) { options.boil = clampBoil(config.boil); updateCursor(); }
       if (config.edgeDive !== undefined) configureEdgeDive(config.edgeDive);
@@ -2068,6 +2255,14 @@
     },
     setColor(v) {
       this.color(v);
+    },
+    fill(v) {
+      options.fill = v === "scribble" ? "scribble" : "solid";
+      updateCursor();
+      saveSettingsToCache(null, options);
+    },
+    setFill(v) {
+      this.fill(v);
     },
     roughness(v) {
       options.roughness = clampRoughness(v);
@@ -2123,6 +2318,7 @@
       if (settings.roughness !== undefined) { options.roughness = clampRoughness(settings.roughness); updateCursor(); }
       if (settings.boil !== undefined) { options.boil = clampBoil(settings.boil); updateCursor(); }
       if (settings.outline !== undefined) { options.outline = Math.max(0, parseFloat(settings.outline) || 0); updateCursor(); }
+      if (settings.fill !== undefined) { options.fill = settings.fill === "scribble" ? "scribble" : "solid"; updateCursor(); }
       if (settings.edgeDive !== undefined) configureEdgeDive(settings.edgeDive);
       saveSettingsToCache(settings.id, options);
       if (settings.id) loadCursorSet(settings.id);
@@ -2164,6 +2360,7 @@
     if (effective.roughness !== undefined) options.roughness = clampRoughness(effective.roughness);
     if (effective.boil !== undefined) options.boil = clampBoil(effective.boil);
     if (effective.outline !== undefined) options.outline = Math.max(0, parseFloat(effective.outline) || 0);
+    if (effective.fill === "scribble") options.fill = "scribble";
     if (effective.edgeDive !== undefined) configureEdgeDive(effective.edgeDive);
 
     const initialId = effective.id || effective.cursor || "Blue";

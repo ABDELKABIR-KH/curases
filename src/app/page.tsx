@@ -81,11 +81,69 @@ const INSTALL_CONFIGS: Record<InstallMethod, InstallConfig> = {
   },
 };
 
+// Dock color fan: natural ink, a full custom color wheel, and a scribble
+// fill toggle that composes with the picked color (50/50 chip).
 const COLOR_PRESETS = [
-  { name: "Natural / Black", hex: "", swatch: "#000000" },
-  { name: "Deep Blue", hex: "#1B4962", swatch: "#1B4962" },
-  { name: "Oxblood", hex: "#85261D", swatch: "#85261D" },
-];
+  { kind: "natural", name: "Natural / Black", hint: "Use natural ink" },
+  { kind: "wheel", name: "Custom color", hint: "Pick any color" },
+  { kind: "scribble", name: "Color + scribble", hint: "Toggle scribble fill" },
+] as const;
+
+type ColorPresetKind = (typeof COLOR_PRESETS)[number]["kind"];
+
+function ChipFace({ kind, color }: { kind: ColorPresetKind; color: string }) {
+  if (kind === "natural") {
+    return (
+      <span
+        className="block size-full rounded-[inherit]"
+        style={{ backgroundColor: "#000000" }}
+      />
+    );
+  }
+
+  if (kind === "wheel") {
+    return (
+      <span className="relative block size-full overflow-hidden rounded-[inherit] bg-white">
+        <span
+          className="absolute inset-0 rounded-[inherit]"
+          style={{
+            background:
+              "conic-gradient(from -90deg, #ff5f5f, #ffc55f, #f8f860, #78d385, #62c8d8, #6f8dff, #b17df8, #f47fb1, #ff5f5f)",
+          }}
+        />
+        <span
+          className="absolute inset-[19%] rounded-full border border-black/10"
+          style={{ backgroundColor: color || "#ffffff" }}
+        />
+      </span>
+    );
+  }
+
+  // Scribble: half solid color, half hand-drawn hatch.
+  return (
+    <span className="relative block size-full overflow-hidden rounded-[inherit] bg-white">
+      <span
+        className="absolute inset-y-0 left-0 w-1/2"
+        style={{ backgroundColor: color || "#050505" }}
+      />
+      <svg
+        className="absolute inset-y-0 right-0 h-full w-1/2"
+        viewBox="0 0 16 32"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          d="M3.5 5.5L12.5 8M3.5 12L12.5 14.5M3.5 19L12.5 21.5M3.5 26L12.5 28.5"
+          stroke={color || "#050505"}
+          strokeWidth="2"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </svg>
+    </span>
+  );
+}
 
 // The fan is one arc struck from the dock's top-left rounded corner:
 // its center is the corner-radius center, its angle step is constant,
@@ -131,6 +189,7 @@ function useMinWidth(query: string) {
 
 function ArcSwatch({
   preset,
+  color,
   index,
   total,
   open,
@@ -139,6 +198,7 @@ function ArcSwatch({
   onSelect,
 }: {
   preset: (typeof COLOR_PRESETS)[number];
+  color: string;
   index: number;
   total: number;
   open: boolean;
@@ -180,14 +240,220 @@ function ArcSwatch({
         onClick={onSelect}
         tabIndex={open ? 0 : -1}
         title={preset.name}
-        aria-label={`Use ${preset.name}`}
+        aria-label={preset.hint}
         aria-pressed={selected}
-        className={`block size-full cursor-pointer rounded-[8px] transition-transform duration-200 hover:scale-110 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] ${
+        className={`block size-full cursor-pointer overflow-hidden rounded-[8px] transition-transform duration-200 hover:scale-110 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] ${
           selected ? "[outline:2px_solid_#222222] [outline-offset:1px]" : ""
         }`}
-        style={{ backgroundColor: preset.swatch }}
-      />
+      >
+        <ChipFace kind={preset.kind} color={color} />
+      </button>
     </motion.div>
+  );
+}
+
+// ---------------------------------------------------------
+// HSV color wheel popover (replaces the flat preset colors)
+// ---------------------------------------------------------
+function hexToRgb(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec((hex || "").trim());
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const part = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${part(r)}${part(g)}${part(b)}`;
+}
+
+function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
+  const rr = r / 255,
+    gg = g / 255,
+    bb = b / 255;
+  const max = Math.max(rr, gg, bb),
+    min = Math.min(rr, gg, bb);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === rr) h = ((gg - bb) / d) % 6;
+    else if (max === gg) h = (bb - rr) / d + 2;
+    else h = (rr - gg) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return [h, max === 0 ? 0 : d / max, max];
+}
+
+function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
+  const c = v * s;
+  const hh = ((((h % 360) + 360) % 360) / 60) % 6;
+  const x = c * (1 - Math.abs((hh % 2) - 1));
+  let rgb: [number, number, number];
+  if (hh < 1) rgb = [c, x, 0];
+  else if (hh < 2) rgb = [x, c, 0];
+  else if (hh < 3) rgb = [0, c, x];
+  else if (hh < 4) rgb = [0, x, c];
+  else if (hh < 5) rgb = [x, 0, c];
+  else rgb = [c, 0, x];
+  const m = v - c;
+  return [(rgb[0] + m) * 255, (rgb[1] + m) * 255, (rgb[2] + m) * 255];
+}
+
+const WHEEL_SIZE = 152;
+
+function ColorWheelPopover({
+  color,
+  onChange,
+}: {
+  color: string;
+  onChange: (hex: string) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const wheelRef = useRef<HTMLDivElement | null>(null);
+
+  const [hsv, setHsv] = useState<[number, number, number]>(() => {
+    const rgb = hexToRgb(color) || [255, 255, 255];
+    return rgbToHsv(rgb[0], rgb[1], rgb[2]);
+  });
+  const [hexDraft, setHexDraft] = useState(color || "#ffffff");
+
+  // Paint the hue/saturation wheel once per mount.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const R = WHEEL_SIZE / 2;
+    const img = ctx.createImageData(WHEEL_SIZE, WHEEL_SIZE);
+    for (let y = 0; y < WHEEL_SIZE; y++) {
+      for (let x = 0; x < WHEEL_SIZE; x++) {
+        const dx = x + 0.5 - R;
+        const dy = y + 0.5 - R;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > R) continue;
+        const hue = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
+        const sat = Math.min(1, dist / (R - 2));
+        const [r, g, b] = hsvToRgb(hue, sat, 1);
+        const i = (y * WHEEL_SIZE + x) * 4;
+        img.data[i] = r;
+        img.data[i + 1] = g;
+        img.data[i + 2] = b;
+        img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }, []);
+
+  const emit = (h: number, s: number, v: number) => {
+    const [r, g, b] = hsvToRgb(h, s, v);
+    const hex = rgbToHex(r, g, b);
+    setHsv([h, s, v]);
+    setHexDraft(hex);
+    onChange(hex);
+  };
+
+  const pick = (clientX: number, clientY: number) => {
+    const wheel = wheelRef.current;
+    if (!wheel) return;
+    const rect = wheel.getBoundingClientRect();
+    const R = rect.width / 2;
+    const x = clientX - rect.left - R;
+    const y = clientY - rect.top - R;
+    const dist = Math.min(Math.hypot(x, y), R - 3);
+    const hue = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+    const sat = Math.min(1, dist / (R - 3));
+    emit(hue, sat, hsv[2]);
+  };
+
+  const markerLeft = 50 + 46.5 * hsv[1] * Math.cos((hsv[0] * Math.PI) / 180);
+  const markerTop = 50 + 46.5 * hsv[1] * Math.sin((hsv[0] * Math.PI) / 180);
+  const dark = rgbToHex(...hsvToRgb(hsv[0], hsv[1], 0.06));
+  const bright = rgbToHex(...hsvToRgb(hsv[0], hsv[1], 1));
+
+  return (
+    <div
+      role="dialog"
+      aria-label="Pick a custom cursor color"
+      className="pointer-events-auto absolute bottom-[calc(100%+12px)] left-0 z-50 flex w-[196px] flex-col gap-3 rounded-2xl bg-surface p-3 [outline:0.8px_solid_#0000000A]"
+    >
+      <div
+        ref={wheelRef}
+        className="relative mx-auto touch-none select-none"
+        style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={WHEEL_SIZE}
+          height={WHEEL_SIZE}
+          className="cursor-crosshair rounded-full shadow-[inset_0_0_0_0.8px_rgba(0,0,0,0.08)]"
+          style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }}
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture(e.pointerId);
+            pick(e.clientX, e.clientY);
+          }}
+          onPointerMove={(e) => {
+            if (e.buttons !== 1) return;
+            pick(e.clientX, e.clientY);
+          }}
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[2.5px] border-white [box-shadow:0_0_0_1.5px_rgba(0,0,0,0.35)]"
+          style={{ left: `${markerLeft}%`, top: `${markerTop}%` }}
+        />
+      </div>
+
+      <div className="flex items-center gap-2.5">
+        <span
+          aria-hidden="true"
+          className="size-[26px] shrink-0 rounded-lg [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px]"
+          style={{ backgroundColor: color || "#ffffff" }}
+        />
+        <input
+          type="range"
+          min={25}
+          max={100}
+          value={Math.round(hsv[2] * 100)}
+          onChange={(e) => emit(hsv[0], hsv[1], Number(e.target.value) / 100)}
+          aria-label="Color brightness"
+          className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full outline-none [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#222222] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#222222] [&::-webkit-slider-thumb]:shadow"
+          style={{ background: `linear-gradient(90deg, ${dark}, ${bright})` }}
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor="curases-hex"
+          className="shrink-0 font-mono text-[11px] font-medium text-muted"
+        >
+          HEX
+        </label>
+        <input
+          id="curases-hex"
+          value={hexDraft}
+          onChange={(e) => {
+            const v = e.target.value;
+            setHexDraft(v);
+            const rgb = hexToRgb(v);
+            if (rgb) {
+              const [h, s, val] = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+              setHsv([h, s, val]);
+              onChange(rgbToHex(rgb[0], rgb[1], rgb[2]));
+            }
+          }}
+          spellCheck={false}
+          autoComplete="off"
+          className="w-full rounded-md bg-transparent px-1 py-0.5 font-mono text-[12px] text-ink outline-none focus:bg-black/[0.03]"
+          placeholder="#1B4962"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -321,7 +587,9 @@ export default function Home() {
   const [speedVal, setSpeedVal] = useState(1);
   const [roughnessVal, setRoughnessVal] = useState(0.5);
   const [selectedColor, setSelectedColor] = useState("");
+  const [scribbleOn, setScribbleOn] = useState(false);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const [isWheelOpen, setIsWheelOpen] = useState(false);
   const [isCopyMenuOpen, setIsCopyMenuOpen] = useState(false);
   const compactFan = !useMinWidth("(min-width: 1024px)");
 
@@ -335,10 +603,13 @@ export default function Home() {
   const copyDropdownRef = useRef<HTMLDivElement>(null);
 
   const activeMethod = INSTALL_CONFIGS[selectedMethod];
-  const activeColorIndex = Math.max(
-    0,
-    COLOR_PRESETS.findIndex((preset) => preset.hex === selectedColor),
-  );
+  // Which chip sits on top of the collapsed stack: scribble mode wins so
+  // both the mode and the picked color stay readable at a glance.
+  const collapsedTopIndex = scribbleOn
+    ? COLOR_PRESETS.findIndex((p) => p.kind === "scribble")
+    : selectedColor === ""
+      ? COLOR_PRESETS.findIndex((p) => p.kind === "natural")
+      : COLOR_PRESETS.findIndex((p) => p.kind === "wheel");
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -353,6 +624,7 @@ export default function Home() {
         !colorDropdownRef.current.contains(e.target as Node)
       ) {
         setIsColorPickerOpen(false);
+        setIsWheelOpen(false);
       }
       if (
         copyDropdownRef.current &&
@@ -365,6 +637,7 @@ export default function Home() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setIsColorPickerOpen(false);
+        setIsWheelOpen(false);
         setIsMethodMenuOpen(false);
         setIsCopyMenuOpen(false);
       }
@@ -414,6 +687,9 @@ export default function Home() {
       if (typeof engine.setRoughness === "function") {
         engine.setRoughness(roughnessVal);
       }
+      if (typeof engine.setFill === "function") {
+        engine.setFill(scribbleOn ? "scribble" : "solid");
+      }
       engine.state(activeCursorState);
       return true;
     };
@@ -432,7 +708,7 @@ export default function Home() {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [sizeVal, speedVal, selectedColor, roughnessVal, activeCursorState]);
+  }, [sizeVal, speedVal, selectedColor, roughnessVal, scribbleOn, activeCursorState]);
 
   const copyToClipboard = async (
     text: string,
@@ -451,9 +727,11 @@ export default function Home() {
   const roughnessAttr = roughnessVal > 0 ? ` data-roughness="${roughnessVal.toFixed(1)}"` : "";
   const colorParam = selectedColor ? `, color "${selectedColor}"` : "";
   const colorAttr = selectedColor ? ` data-color="${selectedColor}"` : "";
+  const fillParam = scribbleOn ? `, fill "scribble"` : "";
+  const fillAttr = scribbleOn ? ` data-fill="scribble"` : "";
 
-  const agentPrompt = `Install Curases, the custom cursor engine, with the "Handy" preset, size ${sizeVal.toFixed(1)}x, speed ${speedVal.toFixed(1)}${colorParam}${roughnessParam}. Docs: https://curases.com/llms.txt`;
-  const scriptTag = `<script src="https://www.curases.com/engine.js" data-cursor="Handy" data-size="${sizeVal.toFixed(1)}" data-speed="${speedVal.toFixed(1)}"${colorAttr}${roughnessAttr} defer></script>`;
+  const agentPrompt = `Install Curases, the custom cursor engine, with the "Handy" preset, size ${sizeVal.toFixed(1)}x, speed ${speedVal.toFixed(1)}${colorParam}${fillParam}${roughnessParam}. Docs: https://curases.com/llms.txt`;
+  const scriptTag = `<script src="https://www.curases.com/engine.js" data-cursor="Handy" data-size="${sizeVal.toFixed(1)}" data-speed="${speedVal.toFixed(1)}"${colorAttr}${fillAttr}${roughnessAttr} defer></script>`;
   
   const handleStateClick = (stateId: string) => {
     setActiveCursorState(stateId);
@@ -464,8 +742,10 @@ export default function Home() {
     setSizeVal(1);
     setSpeedVal(1);
     setSelectedColor("");
+    setScribbleOn(false);
     setRoughnessVal(0.5);
     setIsColorPickerOpen(false);
+    setIsWheelOpen(false);
     handleStateClick("normal");
   };
 
@@ -544,6 +824,7 @@ export default function Home() {
                 speed={speedVal}
                 color={selectedColor}
                 roughness={roughnessVal}
+                scribble={scribbleOn}
                 onReset={resetCursorSettings}
               />
             </div>
@@ -781,10 +1062,18 @@ export default function Home() {
         >
           <button
             type="button"
-            onClick={() => setIsColorPickerOpen((open) => !open)}
-            aria-expanded={isColorPickerOpen}
+            onClick={() => {
+              if (isWheelOpen) {
+                setIsWheelOpen(false);
+                return;
+              }
+              setIsColorPickerOpen((open) => !open);
+            }}
+            aria-expanded={isColorPickerOpen || isWheelOpen}
             aria-label={
-              isColorPickerOpen ? "Close cursor color picker" : "Choose cursor color"
+              isColorPickerOpen || isWheelOpen
+                ? "Close cursor color picker"
+                : "Choose cursor color"
             }
             title="Choose cursor color"
             className={`relative h-[38px] shrink-0 cursor-pointer transition-[width] duration-300 ${
@@ -792,22 +1081,21 @@ export default function Home() {
             }`}
           >
             {COLOR_PRESETS.map((preset, index) => {
-              const isActive = selectedColor === preset.hex;
+              const isActive = index === collapsedTopIndex;
               const chipStyle = {
                 "--chip-left": isColorPickerOpen
                   ? "0px"
                   : `${index * 10}px`,
                 zIndex: isActive
                   ? 40
-                  : COLOR_PRESETS.length - Math.abs(index - activeColorIndex),
-                backgroundColor: preset.swatch,
+                  : COLOR_PRESETS.length - Math.abs(index - collapsedTopIndex),
               } as CSSProperties;
 
               return (
                 <span
-                  key={preset.name}
+                  key={preset.kind}
                   aria-hidden="true"
-                  className={`absolute top-0 left-0 size-[38px] rounded-xl ease-out [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] transition-all duration-300 lg:left-[var(--chip-left)] ${
+                  className={`absolute top-0 left-0 size-[38px] overflow-hidden rounded-xl ease-out [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] transition-all duration-300 lg:left-[var(--chip-left)] ${
                     !isActive && !isColorPickerOpen ? "max-lg:hidden" : ""
                   } ${
                     isColorPickerOpen && !isActive
@@ -815,7 +1103,9 @@ export default function Home() {
                       : "scale-100 opacity-100"
                   }`}
                   style={chipStyle}
-                />
+                >
+                  <ChipFace kind={preset.kind} color={selectedColor} />
+                </span>
               );
             })}
           </button>
@@ -831,22 +1121,48 @@ export default function Home() {
               top: compactFan ? COMPACT_FAN_TOP : FAN_ORIGIN,
             }}
           >
-            {COLOR_PRESETS.map((preset, index) => (
-              <ArcSwatch
-                key={preset.name}
-                preset={preset}
-                index={index}
-                total={COLOR_PRESETS.length}
-                open={isColorPickerOpen}
-                compact={compactFan}
-                selected={selectedColor === preset.hex}
-                onSelect={() => {
-                  setSelectedColor(preset.hex);
-                  setIsColorPickerOpen(false);
-                }}
-              />
-            ))}
+            {COLOR_PRESETS.map((preset, index) => {
+              const selected =
+                preset.kind === "scribble"
+                  ? scribbleOn
+                  : preset.kind === "natural"
+                    ? selectedColor === ""
+                    : selectedColor !== "";
+
+              return (
+                <ArcSwatch
+                  key={preset.kind}
+                  preset={preset}
+                  color={selectedColor}
+                  index={index}
+                  total={COLOR_PRESETS.length}
+                  open={isColorPickerOpen}
+                  compact={compactFan}
+                  selected={selected}
+                  onSelect={() => {
+                    if (preset.kind === "wheel") {
+                      setIsColorPickerOpen(false);
+                      setIsWheelOpen(true);
+                      return;
+                    }
+                    if (preset.kind === "scribble") {
+                      setScribbleOn((on) => !on);
+                    } else {
+                      setSelectedColor("");
+                    }
+                    setIsColorPickerOpen(false);
+                  }}
+                />
+              );
+            })}
           </div>
+
+          {isWheelOpen && (
+            <ColorWheelPopover
+              color={selectedColor}
+              onChange={setSelectedColor}
+            />
+          )}
         </div>
 
         <span className="h-[30px] w-px shrink-0 bg-line" />

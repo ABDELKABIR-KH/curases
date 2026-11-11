@@ -36,6 +36,7 @@ declare global {
       setRoughness?: (roughness: number) => void;
       setBoil?: (boil: number) => void;
       setOutline?: (outline: number) => void;
+      setFill?: (fill: "solid" | "scribble") => void;
       state: (state: string) => void;
       show: () => void;
       hide: () => void;
