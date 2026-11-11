@@ -81,11 +81,11 @@ const INSTALL_CONFIGS: Record<InstallMethod, InstallConfig> = {
   },
 };
 
-// Dock color fan: natural ink, a full custom color wheel, and a scribble
-// fill toggle that composes with the picked color (50/50 chip).
+// Dock color fan: the default black chip is the color picker (its wheel
+// changes the ink color directly), plus a scribble fill toggle that
+// composes with the picked color (50/50 chip).
 const COLOR_PRESETS = [
-  { kind: "natural", name: "Natural / Black", hint: "Use natural ink" },
-  { kind: "wheel", name: "Custom color", hint: "Pick any color" },
+  { kind: "natural", name: "Cursor color", hint: "Pick cursor color" },
   { kind: "scribble", name: "Color + scribble", hint: "Toggle scribble fill" },
 ] as const;
 
@@ -93,29 +93,12 @@ type ColorPresetKind = (typeof COLOR_PRESETS)[number]["kind"];
 
 function ChipFace({ kind, color }: { kind: ColorPresetKind; color: string }) {
   if (kind === "natural") {
+    // Black by default; shows the picked color once one is chosen.
     return (
       <span
         className="block size-full rounded-[inherit]"
-        style={{ backgroundColor: "#000000" }}
+        style={{ backgroundColor: color || "#000000" }}
       />
-    );
-  }
-
-  if (kind === "wheel") {
-    return (
-      <span className="relative block size-full overflow-hidden rounded-[inherit] bg-white">
-        <span
-          className="absolute inset-0 rounded-[inherit]"
-          style={{
-            background:
-              "conic-gradient(from -90deg, #ff5f5f, #ffc55f, #f8f860, #78d385, #62c8d8, #6f8dff, #b17df8, #f47fb1, #ff5f5f)",
-          }}
-        />
-        <span
-          className="absolute inset-[19%] rounded-full border border-black/10"
-          style={{ backgroundColor: color || "#ffffff" }}
-        />
-      </span>
     );
   }
 
@@ -156,6 +139,9 @@ const FAN_AIR = 13;
 const FAN_RADIUS = DOCK_CORNER_RADIUS + FAN_AIR + FAN_SWATCH / 2;
 const FAN_CENTER_ANGLE = 132;
 const FAN_ARC = 124;
+// Widest gap between neighboring chips, so small fans stay tight
+// instead of stretching to the arc's far ends (62 = the 3-chip step).
+const FAN_MAX_STEP = 62;
 const COMPACT_FAN_RADIUS = 34;
 const COMPACT_FAN_TOP = 4;
 const COMPACT_ANGLE_STEP = 43;
@@ -167,9 +153,10 @@ function fanAngle(index: number, total: number, compact: boolean) {
     return 90 + COMPACT_ANGLE_STEP * ((total - 1) / 2 - index);
   }
 
-  const step = total > 1 ? FAN_ARC / (total - 1) : 0;
+  const step =
+    total > 1 ? Math.min(FAN_ARC / (total - 1), FAN_MAX_STEP) : 0;
 
-  return FAN_CENTER_ANGLE + FAN_ARC / 2 - step * index;
+  return FAN_CENTER_ANGLE + (step * (total - 1)) / 2 - step * index;
 }
 
 function useMinWidth(query: string) {
@@ -310,9 +297,11 @@ const WHEEL_SIZE = 152;
 function ColorWheelPopover({
   color,
   onChange,
+  onNatural,
 }: {
   color: string;
   onChange: (hex: string) => void;
+  onNatural: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wheelRef = useRef<HTMLDivElement | null>(null);
@@ -451,6 +440,13 @@ function ColorWheelPopover({
           autoComplete="off"
           className="w-full rounded-md bg-transparent px-1 py-0.5 font-mono text-[12px] text-ink outline-none focus:bg-black/[0.03]"
           placeholder="#1B4962"
+        />
+        <button
+          type="button"
+          onClick={onNatural}
+          title="Natural ink"
+          aria-label="Use natural ink"
+          className="size-[22px] shrink-0 cursor-pointer rounded-lg bg-black transition-transform duration-200 hover:scale-110 [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px]"
         />
       </div>
     </div>
@@ -604,12 +600,14 @@ export default function Home() {
 
   const activeMethod = INSTALL_CONFIGS[selectedMethod];
   // Which chip sits on top of the collapsed stack: scribble mode wins so
-  // both the mode and the picked color stay readable at a glance.
+  // both the mode and the picked color stay readable at a glance. The
+  // natural chip already shows the picked color, so it covers every
+  // non-scribble state.
   const collapsedTopIndex = scribbleOn
     ? COLOR_PRESETS.findIndex((p) => p.kind === "scribble")
-    : selectedColor === ""
-      ? COLOR_PRESETS.findIndex((p) => p.kind === "natural")
-      : COLOR_PRESETS.findIndex((p) => p.kind === "wheel");
+    : COLOR_PRESETS.findIndex((p) => p.kind === "natural");
+  // Fan or wheel open: the chip stack collapses to a single chip.
+  const colorUIOpen = isColorPickerOpen || isWheelOpen;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -1056,7 +1054,7 @@ export default function Home() {
       >
         <div
           className={`relative flex h-[42px] shrink-0 items-center justify-center transition-[width] duration-300 ${
-            isColorPickerOpen ? "w-[38px]" : "w-[38px] lg:w-[62px]"
+            colorUIOpen ? "w-[38px]" : "w-[38px] lg:w-[48px]"
           }`}
           ref={colorDropdownRef}
         >
@@ -1069,21 +1067,21 @@ export default function Home() {
               }
               setIsColorPickerOpen((open) => !open);
             }}
-            aria-expanded={isColorPickerOpen || isWheelOpen}
+            aria-expanded={colorUIOpen}
             aria-label={
-              isColorPickerOpen || isWheelOpen
+              colorUIOpen
                 ? "Close cursor color picker"
                 : "Choose cursor color"
             }
             title="Choose cursor color"
             className={`relative h-[38px] shrink-0 cursor-pointer transition-[width] duration-300 ${
-              isColorPickerOpen ? "w-[38px]" : "w-[38px] lg:w-[62px]"
+              colorUIOpen ? "w-[38px]" : "w-[38px] lg:w-[48px]"
             }`}
           >
             {COLOR_PRESETS.map((preset, index) => {
               const isActive = index === collapsedTopIndex;
               const chipStyle = {
-                "--chip-left": isColorPickerOpen
+                "--chip-left": colorUIOpen
                   ? "0px"
                   : `${index * 10}px`,
                 zIndex: isActive
@@ -1096,9 +1094,9 @@ export default function Home() {
                   key={preset.kind}
                   aria-hidden="true"
                   className={`absolute top-0 left-0 size-[38px] overflow-hidden rounded-xl ease-out [outline:0.8px_solid_#D4D4D4] [outline-offset:0.8px] transition-all duration-300 lg:left-[var(--chip-left)] ${
-                    !isActive && !isColorPickerOpen ? "max-lg:hidden" : ""
+                    !isActive && !colorUIOpen ? "max-lg:hidden" : ""
                   } ${
-                    isColorPickerOpen && !isActive
+                    colorUIOpen && !isActive
                       ? "scale-75 opacity-0"
                       : "scale-100 opacity-100"
                   }`}
@@ -1123,11 +1121,7 @@ export default function Home() {
           >
             {COLOR_PRESETS.map((preset, index) => {
               const selected =
-                preset.kind === "scribble"
-                  ? scribbleOn
-                  : preset.kind === "natural"
-                    ? selectedColor === ""
-                    : selectedColor !== "";
+                preset.kind === "scribble" ? scribbleOn : selectedColor === "";
 
               return (
                 <ArcSwatch
@@ -1140,15 +1134,12 @@ export default function Home() {
                   compact={compactFan}
                   selected={selected}
                   onSelect={() => {
-                    if (preset.kind === "wheel") {
-                      setIsColorPickerOpen(false);
-                      setIsWheelOpen(true);
-                      return;
-                    }
                     if (preset.kind === "scribble") {
                       setScribbleOn((on) => !on);
                     } else {
-                      setSelectedColor("");
+                      // The black chip is the picker: jump straight
+                      // into the wheel to change the color directly.
+                      setIsWheelOpen(true);
                     }
                     setIsColorPickerOpen(false);
                   }}
@@ -1161,6 +1152,10 @@ export default function Home() {
             <ColorWheelPopover
               color={selectedColor}
               onChange={setSelectedColor}
+              onNatural={() => {
+                setSelectedColor("");
+                setIsWheelOpen(false);
+              }}
             />
           )}
         </div>
