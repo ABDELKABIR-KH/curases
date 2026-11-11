@@ -107,6 +107,17 @@ body:has([data-curases-sandbox]:hover) #custom-cursor {
   fill: currentColor !important;
 }
 
+/* Scribble mode: the fill is pen strokes, so the outline shares the picked
+   color to stay consistent with the scribble ink. */
+.preview-mini-cursor.color-custom.scribble-on svg path[stroke="#050505"],
+.preview-mini-cursor.color-custom.scribble-on svg path.curases-sketch-frame[stroke="#050505"],
+.preview-idle-cursor.color-custom.scribble-on svg path[stroke="#050505"],
+.preview-idle-cursor.color-custom.scribble-on svg path.curases-sketch-frame[stroke="#050505"],
+.preview-state-card.color-custom.scribble-on svg path[stroke="#050505"],
+.preview-state-card.color-custom.scribble-on svg path.curases-sketch-frame[stroke="#050505"] {
+  stroke: currentColor !important;
+}
+
 /* Black outline thickness control via SVG paint-order stroke expansion */
 .preview-mini-cursor svg path[fill="black"],
 .preview-mini-cursor svg path[fill="#000000"],

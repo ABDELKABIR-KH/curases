@@ -818,6 +818,17 @@
         colorStyle.setAttribute("data-cursor-color", "true");
         cursor.appendChild(colorStyle);
       }
+      // In scribble mode the fill is pen strokes, so the outline shares
+      // the picked color to stay consistent with the scribble ink.
+      const outlineTint =
+        options.fill === "scribble"
+          ? `
+        #custom-cursor svg path[stroke="#050505"],
+        #custom-cursor svg path.curases-sketch-frame[stroke="#050505"] {
+          stroke: currentColor !important;
+        }
+      `
+          : "";
       colorStyle.textContent = `
         #custom-cursor svg path[fill="white"],
         #custom-cursor svg path[fill="#ffffff"],
@@ -829,6 +840,7 @@
         #custom-cursor svg path.curases-sketch-frame[fill="#f8f8f8"] {
           fill: currentColor !important;
         }
+        ${outlineTint}
       `;
     } else if (options.fill === "scribble") {
       // Scribble strokes are drawn with currentColor; without a tint they

@@ -828,7 +828,7 @@ export default function PreviewCard({
         <div
           className={`preview-mini-cursor${
             hasCustomColor ? " color-custom" : ""
-          }`}
+          }${scribble ? " scribble-on" : ""}`}
           style={effectiveColor ? { color: effectiveColor } : undefined}
           dangerouslySetInnerHTML={{
             __html: withUniqueClipIds(renderedActiveSvg, "mini"),
@@ -841,7 +841,7 @@ export default function PreviewCard({
         <motion.div
           className={`preview-idle-cursor${
             hasCustomColor ? " color-custom" : ""
-          }`}
+          }${scribble ? " scribble-on" : ""}`}
           style={effectiveColor ? { color: effectiveColor } : undefined}
           animate={idleControls}
           dangerouslySetInnerHTML={{
@@ -865,7 +865,9 @@ export default function PreviewCard({
                     <div
                       className={`preview-state-card ${
                         isActive ? "active" : ""
-                      }${hasCustomColor ? " color-custom" : ""}`}
+                      }${hasCustomColor ? " color-custom" : ""}${
+                        scribble ? " scribble-on" : ""
+                      }`}
                       style={effectiveColor ? { color: effectiveColor } : undefined}
                       onClick={(e) => {
                         e.stopPropagation();
